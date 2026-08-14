@@ -164,11 +164,18 @@ export default function ProductGrid({ products, categories }: { products: Produc
         formData.set("remove_all_images", "true")
       }
 
-      imageItems
-        .filter((item) => item.type === "new" && item.file)
-        .forEach((item) => {
+      const { optimizeImage } = await import("@/shared/utils/imageOptimizer")
+
+      const newImageItems = imageItems.filter((item) => item.type === "new" && item.file)
+      for (const item of newImageItems) {
+        try {
+          const optimizedBlob = await optimizeImage(item.file as File)
+          formData.append("images", optimizedBlob, item.file!.name)
+        } catch (err) {
+          console.warn("Could not optimize image, sending raw", err)
           formData.append("images", item.file as File)
-        })
+        }
+      }
 
       if (hasVariantsVal) {
         const options = JSON.parse(variantOptionsStr || "[]")

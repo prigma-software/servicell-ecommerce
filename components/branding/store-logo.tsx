@@ -10,20 +10,26 @@ type StoreLogoProps = {
   className?: string
 }
 
-const sizePx = { sm: 28, md: 40, lg: 80 } as const
+const sizes = { 
+  sm: { width: 100, height: 28 }, 
+  md: { width: 160, height: 40 }, 
+  lg: { width: 280, height: 80 } 
+} as const
 
 export function StoreLogo({ src, alt, size = "md", className = "" }: StoreLogoProps) {
-  const px = sizePx[size]
+  const { width, height } = sizes[size]
   const logoSrc = src ?? storeBranding.assets.logo
   const logoAlt = alt ?? storeBranding.name
 
   return (
-    <Image
-      src={logoSrc}
-      alt={logoAlt}
-      width={px}
-      height={px}
-      className={`object-contain ${className}`}
-    />
+    <div className={`flex items-center justify-center ${className}`} style={{ width, height, maxWidth: '100%', maxHeight: '90%' }}>
+      <Image
+        src={logoSrc}
+        alt={logoAlt}
+        width={width}
+        height={height}
+        className="object-contain w-auto h-auto max-w-full max-h-full"
+      />
+    </div>
   )
 }

@@ -20,9 +20,8 @@ export function AdminSidebar() {
 
   return (
     <div className="w-64 h-full min-h-[100dvh] bg-card shadow-sm border-r border-border flex flex-col">
-      <Link href="/admin" className="p-6 border-b border-border flex items-center gap-3 hover:bg-muted/30 transition-colors">
+      <Link href="/admin" className="p-6 border-b border-border flex justify-center hover:bg-muted/30 transition-colors">
         <StoreLogo size="md" />
-        <span className="text-lg font-bold text-card-foreground">{storeBranding.name}</span>
       </Link>
       <nav className="p-4 space-y-1 flex-1">
         {SIDEBAR_ITEMS.filter(item => {

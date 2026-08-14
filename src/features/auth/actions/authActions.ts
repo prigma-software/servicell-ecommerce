@@ -42,9 +42,14 @@ export async function getUserDetails(userId: string) {
 }
 
 export async function updateUserRole(userId: string, role: UserRole) {
-  const adminClient = await createAdminClient()
-  await updateProfileRole(adminClient, userId, role)
-  revalidatePath("/admin/users")
+  try {
+    const adminClient = await createAdminClient()
+    await updateProfileRole(adminClient, userId, role)
+    revalidatePath("/admin/users")
+  } catch (error: any) {
+    console.error("🔥 ERROR EN updateUserRole (PRODUCCIÓN):", error)
+    throw new Error(`Error al actualizar rol: ${error.message}`)
+  }
 }
 
 export async function login(formData: FormData) {

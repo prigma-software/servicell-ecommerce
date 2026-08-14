@@ -23,17 +23,17 @@ export class WorkOrderNotifier {
           .title { color: #fafafa; font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 20px; }
           .message { color: #a1a1aa; font-size: 16px; line-height: 1.6; margin-bottom: 32px; }
           .button-container { text-align: center; margin-bottom: 32px; }
-          .button { background-color: #8a5cf6; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block; transition: background-color 0.2s; box-shadow: 0 2px 4px rgba(138, 92, 246, 0.3); }
-          .button:hover { background-color: #7c3aed; }
+          .button { background-color: #dc2626; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; display: inline-block; transition: background-color 0.2s; box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3); }
+          .button:hover { background-color: #b91c1c; }
           .footer { background-color: #0a0a0a; padding: 24px 40px; text-align: center; border-top: 1px solid #27272a; }
           .footer p { color: #52525b; font-size: 13px; margin: 0 0 8px 0; line-height: 1.5; }
-          .link-fallback { color: #8a5cf6; text-decoration: underline; word-break: break-all; }
+          .link-fallback { color: #dc2626; text-decoration: underline; word-break: break-all; }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <img src="https://prigma.net/_next/image?url=%2Fimages%2Fprigma_logo_sin_fondo.png&w=256&q=75" alt="PRIGMA" />
+            <img src="${this.appUrl}${storeBranding.assets.logo}" alt="${storeBranding.name}" />
           </div>
           <div class="content">
             <h2 class="title">${title}</h2>

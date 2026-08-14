@@ -10,7 +10,7 @@
 
 @layer base {
   :root {
-    --primary: 258 90% 66%;
+    --primary: 0 72% 51%;
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 100%;
@@ -24,7 +24,7 @@
     --muted-foreground: 240 5% 65%;
     --border: 240 4% 16%;
     --input: 240 4% 16%;
-    --ring: 258 90% 66%;
+    --ring: 0 72% 51%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --color-success: 142 71% 45%;
@@ -39,7 +39,7 @@
     --color-danger: 0 84% 60%;
     --danger-foreground: 0 0% 100%;
     --bg-danger: 0 63% 31%;
-    --color-purple: 258 90% 66%;
+    --color-purple: 0 72% 51%;
     --radius: 0.5rem;
   }
 
@@ -52,8 +52,8 @@
     --muted-foreground: 240 5% 34%;
     --border: 240 6% 90%;
     --input: 0 0% 100%;
-    --ring: 258 90% 66%;
-    --primary: 258 90% 66%;
+    --ring: 0 72% 51%;
+    --primary: 0 72% 51%;
     --primary-foreground: 0 0% 100%;
     --secondary: 240 5% 96%;
     --secondary-foreground: 0 0% 4%;
@@ -73,7 +73,7 @@
     --color-danger: 0 84% 60%;
     --danger-foreground: 0 0% 100%;
     --bg-danger: 0 93% 94%;
-    --color-purple: 258 90% 66%;
+    --color-purple: 0 72% 51%;
   }
 }
 

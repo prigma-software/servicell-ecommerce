@@ -1,9 +1,9 @@
 export const storeBranding = {
   // Core identity
-  name: "PRIGMA",
+  name: "Servicell",
   description:
-    "Desarrollo de software personalizado para empresas en Colombia. Apps web, móviles y sistemas ERP/CRM.",
-  url: "https://prigma.net",
+    "Reparación de dispositivos móviles y computadores. Tecnología en buenas manos.",
+  url: "https://servicell-sogamoso.com",
   locale: "es_CO" as const,
 
   // Theme
@@ -13,14 +13,14 @@ export const storeBranding = {
 
   // Contact
   contact: {
-    phone: "+57 311 2078781",
-    email: "contacto@prigma.net",
-    address: "Colombia",
+    phone: "+57 320 2340616",
+    email: "contacto@servicell-sogamoso.com",
+    address: "Calle 11 No. 12-27 San Andresito ASOPEC Local 213",
     city: "Sogamoso",
     country: "Colombia",
-    schedule: "Lunes a Viernes 8am - 6pm",
+    schedule: "Lunes a Sábado 9am - 7pm",
   },
-  whatsapp: "573112078781",
+  whatsapp: "573202340616",
 
   // Social
   social: {
@@ -32,17 +32,17 @@ export const storeBranding = {
 
   // Legal
   legal: {
-    copyrightName: "PRIGMA",
+    copyrightName: "Servicell",
   },
 
   // Assets
   assets: {
-    logo: "/images/brandClient/prigma_logo_sin_fondo.png",
-    logoIcon: "/images/brandClient/prigma_logo_sin_fondo.png",
-    logoText: "/images/brandClient/prigma_logo_sin_fondo.png",
-    logoFull: "/images/brandClient/prigma_logo_sin_fondo.png",
-    favicon: "/images/brandClient/prigma_logo_sin_fondo.png",
-    ogImage: "/images/brandClient/prigma_logo.jpeg",
+    logo: "/images/brandClient/servicell_logo.png",
+    logoIcon: "/images/brandClient/servicell_icon.png",
+    logoText: "/images/brandClient/servicell_logo.png",
+    logoFull: "/images/brandClient/servicell_logo.png",
+    favicon: "/favicon.ico",
+    ogImage: "/images/brandClient/servicell_og.png",
     aboutHero: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=1200&h=400&fit=crop", // Development/Laptop
     aboutTeam: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=600&h=200&fit=crop", // Team working on software
     aboutWarehouse: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&h=200&fit=crop", // Servers/Cloud
@@ -50,27 +50,27 @@ export const storeBranding = {
 
   // About page content
   about: {
-    heroTitle: "Desarrollo de Software a Medida",
+    heroTitle: "Tecnología en Buenas Manos",
     heroDescription:
-      "Soluciones de software personalizadas para transformar tu negocio. Apps web, móviles y sistemas empresariales.",
-    storyTitle: "Nuestra Historia",
-    storySubtitle: "Más de 3 años de experiencia",
+      "Somos especialistas en la reparación y mantenimiento de dispositivos móviles y computadores. Tu equipo seguro y con garantía.",
+    storyTitle: "Sobre Servicell",
+    storySubtitle: "Calidad, Confianza y Garantía",
     storyText:
-      "PRIGMA nació con la visión de potenciar a las empresas colombianas mediante tecnología de punta. Nos especializamos en entender las necesidades únicas de cada negocio y traducirlas en software robusto, escalable y eficiente.",
+      "En Servicell nos dedicamos a brindar el mejor servicio técnico para tus dispositivos. Manejamos todas las marcas (Sony, Huawei, Samsung, LG, Apple, Alcatel) y contamos con el conocimiento técnico para solucionar problemas de hardware y software.",
     mission:
-      "Brindar soluciones de software personalizadas y de alta calidad que impulsen el crecimiento y la transformación digital de nuestros clientes.",
+      "Ofrecer un servicio de reparación técnico transparente, rápido y confiable, garantizando que los equipos de nuestros clientes funcionen a la perfección.",
     vision:
-      "Ser líderes en el desarrollo de software a medida en Colombia, reconocidos por nuestra innovación, calidad técnica y compromiso con el éxito de cada proyecto.",
+      "Ser el centro de servicio técnico líder en Sogamoso, reconocido por nuestra calidad, honestidad y la excelencia en reparación de tecnología.",
     tagline:
-      "Tu socio tecnológico para soluciones de software a medida.",
+      "Tecnología en buenas manos.",
     teamText:
-      "Un equipo de ingenieros y diseñadores apasionados por crear productos digitales excepcionales.",
+      "Contamos con técnicos certificados y con experiencia en reparación de dispositivos.",
     warehouseText:
-      "Infraestructura cloud robusta y segura para desplegar tus aplicaciones.",
+      "Laboratorio técnico equipado con herramientas de precisión para diagnósticos exactos.",
     stats: {
-      clients: "20+",
-      products: "50+",
-      years: "3+",
+      clients: "1000+",
+      products: "Multi-marca",
+      years: "10+",
       secure: "100%",
     } as const,
   },

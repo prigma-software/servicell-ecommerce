@@ -130,7 +130,7 @@ export default function Navbar() {
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       <div className="max-w-screen-2xl mx-auto px-6">
-        <div className="flex justify-between h-16">
+        <div className="flex justify-between min-h-[4rem] py-2 items-center">
           <div className="flex items-center gap-8">
             <motion.div {...scaleHover}>
               <Link href="/" className="flex items-center gap-2">
@@ -138,9 +138,8 @@ export default function Navbar() {
                   whileHover={{ rotate: [0, -10, 10, 0] }}
                   transition={{ duration: 0.5 }}
                 >
-                  <StoreLogo size="sm" />
+                  <StoreLogo size="md" />
                 </motion.div>
-                <StoreName className="text-xl font-black text-card-foreground tracking-tight font-varela-round" />
               </Link>
             </motion.div>
 

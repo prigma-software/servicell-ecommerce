@@ -184,7 +184,16 @@ export default function ProductVariantsEditor({
     if (!files || files.length === 0 || variantId.startsWith("temp-")) return
     setUploadingVariantId(variantId)
     const formData = new FormData()
-    Array.from(files).forEach((file) => formData.append("images", file))
+    const { optimizeImage } = await import("@/shared/utils/imageOptimizer")
+    for (const file of Array.from(files)) {
+      try {
+        const optimizedBlob = await optimizeImage(file)
+        formData.append("images", optimizedBlob, file.name)
+      } catch (err) {
+        console.warn("Could not optimize image, sending raw", err)
+        formData.append("images", file)
+      }
+    }
     try {
       await replaceVariantImages(variantId, formData)
       if (productId) {

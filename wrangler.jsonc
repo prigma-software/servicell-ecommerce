@@ -1,7 +1,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"main": ".open-next/worker.js",
-	"name": "e-commerce-prigma",
+	"name": "servicell-e-commerce",
 	"compatibility_date": "2025-05-25",
 	"compatibility_flags": ["nodejs_compat"],
 	"workers_dev": false,
@@ -10,12 +10,12 @@
 		"binding": "ASSETS"
 	},
 	"routes": [
-		{ "pattern": "e-commerce.prigma.net", "custom_domain": true }
+		{ "pattern": "servicell-sogamoso.com", "custom_domain": true }
 	],
 	"services": [
 		{
 			"binding": "WORKER_SELF_REFERENCE",
-			"service": "e-commerce-prigma"
+			"service": "servicell-e-commerce"
 		}
 	],
 	"observability": {
@@ -42,5 +42,12 @@
 	},
 	"migrations": [
 		{ "tag": "v1", "new_sqlite_classes": ["DOQueueHandler", "DOShardedTagCache", "BucketCachePurge"] }
-	]
+	],
+	"vars": {
+		"NEXT_PUBLIC_APP_URL": "https://servicell-sogamoso.com",
+		"NEXT_PUBLIC_SUPABASE_URL": "https://ckawadlcahgbtsyszcgi.supabase.co",
+		"PRIGMA_URL": "https://prigma.net",
+		"RESEND_FROM_EMAIL": "SERVICELL <contacto@servicell-sogamoso.com>",
+		"TEST_ADMIN_EMAIL": "christianmartinez@prigma.net"
+	}
 }

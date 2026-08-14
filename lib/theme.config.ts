@@ -56,7 +56,7 @@ export interface ThemeConfig {
 export const themeConfig: ThemeConfig = {
   // ── BRAND ──────────────────────────────────
   brand: {
-    primary: "#8a5cf6", // PRIGMA Purple
+    primary: "#dc2626", // Servicell Red
     primaryForeground: "#ffffff",
     secondary: "#1f1f1f", // Dark gray
     secondaryForeground: "#ffffff",
@@ -74,7 +74,7 @@ export const themeConfig: ThemeConfig = {
     mutedForeground: "#a1a1aa", // Zinc-400
     border: "#27272a",
     input: "#27272a",
-    ring: "#8a5cf6",
+    ring: "#dc2626",
   },
 
   // ─ SEMANTIC ───────────────────────────────
@@ -97,10 +97,10 @@ export const themeConfig: ThemeConfig = {
 
   // ── CUSTOM ─────────────────────────────────
   custom: {
-    purple: "#8a5cf6",
+    purple: "#dc2626",
   },
 
-  borderRadius: "0.5rem", // Standard PRIGMA radius
+  borderRadius: "0.5rem", // Standard radius
 };
 
 // ─────────────────────────────────────────────
@@ -123,10 +123,10 @@ export const lightTheme: Partial<ThemeConfig> & {
     mutedForeground: "#52525b", // Zinc-500
     border: "#e4e4e7",
     input: "#ffffff",
-    ring: "#8a5cf6",
+    ring: "#dc2626",
   },
   brand: {
-    primary: "#8a5cf6",
+    primary: "#dc2626",
     primaryForeground: "#ffffff",
     secondary: "#f4f4f5",
     secondaryForeground: "#0a0a0a",
@@ -150,6 +150,6 @@ export const lightTheme: Partial<ThemeConfig> & {
     dangerMuted: "#fee2e2",
   },
   custom: {
-    purple: "#8a5cf6",
+    purple: "#dc2626",
   },
 };

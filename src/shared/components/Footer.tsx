@@ -50,9 +50,8 @@ export default function Footer() {
                 // whileHover={{ rotate: [0, -10, 10, 0] }}
                 transition={{ duration: 0.5 }}
               >
-                <StoreLogo size="sm" />
+                <StoreLogo size="md" />
               </motion.div>
-              <StoreName className="text-xl font-black text-card-foreground tracking-tight font-varela-round" />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
               {storeBranding.about.tagline}
