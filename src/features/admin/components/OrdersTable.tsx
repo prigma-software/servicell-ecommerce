@@ -124,13 +124,35 @@ export function OrdersTable({ orders, isLoading }: OrdersTableProps) {
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <span
-                    className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${
-                      STATUS_BADGE_STYLES[order.status] ?? STATUS_BADGE_DEFAULT
-                    }`}
-                  >
-                    {STATUS_LABELS[order.status] ?? order.status}
-                  </span>
+                  {(() => {
+                    const isWompi = order.payment_method === "wompi" || !!order.wompi_transaction_id
+                    let label = STATUS_LABELS[order.status] ?? order.status
+                    let style = STATUS_BADGE_STYLES[order.status] ?? STATUS_BADGE_DEFAULT
+
+                    if (order.status === "APPROVED") {
+                      if (isWompi) {
+                        label = "Aprobada (Wompi)"
+                        style = "bg-success-muted text-success border-success"
+                      } else if (order.is_paid) {
+                        label = "Aprobada y Cobrada"
+                        style = "bg-success-muted text-success border-success"
+                      } else {
+                        label = "Despachada (Por Cobrar)"
+                        style = "bg-warning-muted text-warning border-warning"
+                      }
+                    } else if (order.status === "PENDING_MANUAL") {
+                      label = "Contra Entrega (Por Despachar)"
+                      style = "bg-warning-muted text-warning border-warning"
+                    }
+
+                    return (
+                      <span
+                        className={`inline-flex px-2.5 py-1 text-xs font-medium rounded-full border ${style}`}
+                      >
+                        {label}
+                      </span>
+                    )
+                  })()}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <span className="text-sm font-bold text-foreground">

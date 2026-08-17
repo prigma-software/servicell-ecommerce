@@ -396,7 +396,7 @@ export default function CheckoutPage() {
                         : (!isWompiEnabled && !isManualEnabled)
                           ? "Pagos deshabilitados"
                           : paymentMethod === 'manual' 
-                            ? (!isManualAllowed ? "Pago manual no disponible" : "Confirmar Pedido Manual")
+                            ? (!isManualAllowed ? "Pago contra entrega no disponible" : "Confirmar Pedido Contra Entrega")
                             : "Proceder al Pago"}
           </button>
 

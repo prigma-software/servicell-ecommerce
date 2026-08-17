@@ -191,10 +191,10 @@ export async function getDashboardMetrics(start: Date, end: Date): Promise<Dashb
     bestSellerResult,
     onlineOrdersCountResult,
   ] = await Promise.all([
-    // 1. Online orders revenue (APPROVED only)
+    // 1. Online orders revenue (APPROVED only with payment_method and is_paid)
     supabase
       .from("orders")
-      .select("total_amount")
+      .select("total_amount, payment_method, is_paid")
       .eq("status", "APPROVED")
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString()),
@@ -212,10 +212,11 @@ export async function getDashboardMetrics(start: Date, end: Date): Promise<Dashb
       .select("*", { count: "exact", head: true })
       .eq("status", "pending"),
 
-    // 4. Best selling product
+    // 4. Best selling product (APPROVED orders only)
     supabase
       .from("order_items")
-      .select("quantity, products(id, name, image_url)")
+      .select("quantity, products(id, name, image_url), orders!inner(status)")
+      .eq("orders.status", "APPROVED")
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString()),
 
@@ -233,11 +234,13 @@ export async function getDashboardMetrics(start: Date, end: Date): Promise<Dashb
   if (bestSellerResult.error) throw new Error(bestSellerResult.error.message)
   if (onlineOrdersCountResult.error) throw new Error(onlineOrdersCountResult.error.message)
 
-  // Calculate online revenue
-  const onlineRevenue = (ordersResult.data ?? []).reduce(
-    (sum, o) => sum + (o.total_amount ?? 0),
-    0
-  )
+  // Calculate online revenue: only Wompi or manual with collected cash (is_paid === true)
+  const onlineRevenue = (ordersResult.data ?? [])
+    .filter((o: any) => o.payment_method === 'wompi' || o.is_paid === true)
+    .reduce(
+      (sum, o) => sum + (o.total_amount ?? 0),
+      0
+    )
 
   // Calculate POS revenue + count
   const posRevenue = (posSalesResult.data ?? []).reduce(
@@ -309,10 +312,10 @@ export async function getRevenueByDay(
   const supabase = await createClient()
 
   const [ordersResult, posResult] = await Promise.all([
-    // Online orders revenue by day (APPROVED only)
+    // Online orders revenue by day (APPROVED only, with payment_method and is_paid)
     supabase
       .from("orders")
-      .select("created_at, total_amount")
+      .select("created_at, total_amount, payment_method, is_paid")
       .eq("status", "APPROVED")
       .gte("created_at", start.toISOString())
       .lte("created_at", end.toISOString()),
@@ -328,9 +331,10 @@ export async function getRevenueByDay(
   if (ordersResult.error) throw new Error(ordersResult.error.message)
   if (posResult.error) throw new Error(posResult.error.message)
 
-  // Aggregate online revenue by day
+  // Aggregate online revenue by day (only paid)
   const onlineMap = new Map<string, number>()
-  for (const order of ordersResult.data ?? []) {
+  for (const order of (ordersResult.data ?? []) as any[]) {
+    if (order.payment_method !== 'wompi' && order.is_paid !== true) continue
     const day = new Date(order.created_at).toISOString().split("T")[0]
     onlineMap.set(day, (onlineMap.get(day) ?? 0) + (order.total_amount ?? 0))
   }

@@ -14,9 +14,14 @@ export default function CartSummary({ total, hasBlockedItems }: CartSummaryProps
     <div className="w-full lg:w-1/3 bg-card rounded-xl shadow-sm border p-6 sticky top-24">
       <h2 className="text-xl font-extrabold text-card-foreground mb-6">Resumen</h2>
 
-      <div className="flex justify-between items-center mb-4 text-muted-foreground font-medium">
+      <div className="flex justify-between items-center mb-3 text-muted-foreground font-medium">
         <span>Subtotal</span>
         <span>{formatPrice(total)}</span>
+      </div>
+
+      <div className="flex justify-between items-center mb-4 text-muted-foreground font-medium text-sm">
+        <span>Envío</span>
+        <span className="text-xs text-muted-foreground font-normal">Calculado en el checkout</span>
       </div>
 
       <hr className="my-4 border-border" />

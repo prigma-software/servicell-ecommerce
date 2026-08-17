@@ -64,7 +64,7 @@ Sistema implementado en 3 fases para proteger contra ventas de productos indispo
 - Cuando está `true`: al consultar stock se limpian reservas expiradas primero
 - Se actualiza automáticamente en create/cancel/confirm/cleanup
 
-**Flujo completo**:
+**Flujo Wompi (Con Pasarela Online)**:
 ```
 Usuario A entra a checkout
   → API /api/cart/reserve
@@ -77,15 +77,22 @@ Usuario A paga APPROVED
   → Marca reserva como confirmed
   → has_active_reservation = false
 
-Usuario A abandona (se va a duchar)
+Usuario A abandona
   → Reserva expira en 15 min
-  → Nadie limpió
+  → Se libera con Lazy Cleanup al consultar o reservar stock
+```
 
-Usuario B quiere el mismo producto
-  → Entra a checkout → /api/cart/reserve
-  → Cleanup global de expiradas
-  → Stock de A se restaura
-  → B puede reservar normalmente
+**Flujo Contra Entrega / Manual (Sin Pasarela)**:
+```
+Usuario entra a checkout con método 'manual'
+  → No genera reserva temporal de 15 minutos en /api/cart/reserve
+  → Al presionar "Confirmar Pedido Contra Entrega"
+  → Invoca RPC 'create_manual_order_with_stock'
+  → Valida stock disponible y descuenta inventario de forma atómica e inmediata
+  → Crea la orden en estado 'PENDING_MANUAL' con 'is_paid = false'
+  → Si la orden se cancela en el admin o expira por inactividad > 72h:
+      → Invoca 'rollbackOrderStock' para restaurar las unidades en paralelo
+      → Marca 'stock_returned = true' para evitar duplicación
 ```
 
 ---

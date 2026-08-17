@@ -13,6 +13,7 @@
   - Use `@supabase/ssr` for server-side operations
   - Use `@supabase/supabase-js` for client-side operations
   - ALL database queries MUST go through Supabase client — never raw SQL unless it's a migration file
+  - ⚠️ **ALL DATABASE MIGRATIONS MUST BE RUN VIA CLI (`npx supabase db push`)** — Never via the web SQL Editor.
 
 ### UI & Testing
 - Tailwind CSS + shadcn/ui (style: `new-york`, RSC enabled)

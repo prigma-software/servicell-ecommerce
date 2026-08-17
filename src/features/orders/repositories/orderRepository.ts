@@ -96,7 +96,7 @@ export async function findOrdersByDateRange(
 ) {
   let query = client
     .from("orders")
-    .select("total_amount, created_at, status")
+    .select("total_amount, created_at, status, payment_method, is_paid")
     .gte("created_at", start.toISOString())
     .lte("created_at", end.toISOString())
 
@@ -155,7 +155,8 @@ export async function findOrderItemsWithProducts(
 ) {
   const { data, error } = await client
     .from("order_items")
-    .select("quantity, products(id, name, image_url)")
+    .select("quantity, products(id, name, image_url), orders!inner(status)")
+    .eq("orders.status", "APPROVED")
     .gte("created_at", start.toISOString())
     .lte("created_at", end.toISOString())
 

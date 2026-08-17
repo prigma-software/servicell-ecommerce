@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
 import { runCleanup } from "@/features/cart/services/cleanupService"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { createAuditLog } from "@/features/admin/services/auditService"
 import {
   findPendingManualOrdersOlderThan,
   findOrderItems,
-  updateOrderStatus,
 } from "@/features/orders/repositories/orderRepository"
 import {
   incrementSkuStock,
@@ -35,15 +35,38 @@ export async function POST() {
         try {
           const items = await findOrderItems(adminClient, order.id)
 
-          for (const item of items) {
-            if (item.variant_id) {
-              await incrementSkuStock(adminClient, item.variant_id, item.quantity)
-            } else {
-              await incrementProductStock(adminClient, item.product_id, item.quantity)
-            }
+          // 1. Restaurar stock en paralelo
+          if (items && items.length > 0) {
+            await Promise.all(
+              items.map((item) => {
+                if (item.variant_id) {
+                  return incrementSkuStock(adminClient, item.variant_id, item.quantity)
+                } else {
+                  return incrementProductStock(adminClient, item.product_id, item.quantity)
+                }
+              })
+            )
           }
 
-          await updateOrderStatus(adminClient, order.id, "DECLINED")
+          // 2. Actualizar estado a DECLINED con metadatos completos y stock_returned = true
+          await adminClient
+            .from("orders")
+            .update({
+              status: "DECLINED",
+              stock_returned: true,
+              cancellation_reason: "Expiración automática por inactividad > 72 horas (Cron)",
+              cancelled_at: new Date().toISOString(),
+            })
+            .eq("id", order.id)
+
+          // 3. Registrar Log de Auditoría
+          await createAuditLog(adminClient, {
+            action: "ORDER_EXPIRED_CRON",
+            target_type: "order",
+            target_id: order.id,
+            reason: "Expiración automática por inactividad > 72 horas (Cron)",
+          }).catch((err) => console.warn("[CRON] Audit log warning:", err))
+
           console.log(`[CRON] Manual order ${order.id} marked as DECLINED, stock restored`)
           results.manual_orders_processed++
         } catch (err) {

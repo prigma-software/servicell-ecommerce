@@ -7,6 +7,8 @@ Este proyecto depende 100% de que la base de datos sea replicable para nuevos cl
 ### 1. Migraciones como Única Fuente de Verdad
 Cualquier cambio en el esquema (crear tablas, alterar columnas, policies de RLS, funciones RPC, triggers) DEBE estar documentado en un archivo SQL dentro de `supabase/migrations/`.
 
+⚠️ **REGLA ESTRICTA DE DESPLIEGUE:** TODAS las migraciones se ejecutan **exclusivamente desde la terminal** mediante el CLI de Supabase (`npx supabase db push`). **Está prohibido ejecutar scripts manualmente en el SQL Editor web** para garantizar la consistencia y el historial de versiones del CLI.
+
 - **Para crear una migración nueva:**
   ```bash
   npx supabase migration new nombre_descriptivo_de_la_migracion

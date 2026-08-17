@@ -15,11 +15,8 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <motion.div
+    <div
       className="w-full max-w-md space-y-8 rounded-2xl bg-card p-10 shadow-2xl border border-border"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
     >
       <div className="text-center">
         <Link href="/" className="inline-flex items-center gap-2 mb-6">
@@ -48,7 +45,7 @@ function LoginForm() {
         </motion.div>
       )}
 
-      <form action={login} className="mt-8 space-y-6">
+      <form action={login} className="mt-8 space-y-6" data-testid="login-form">
         <div className="space-y-4">
           <div>
             <label
@@ -61,6 +58,8 @@ function LoginForm() {
               id="email"
               name="email"
               type="email"
+              aria-label="Correo electrónico"
+              data-testid="email-input"
               autoComplete="email"
               required
               className="w-full rounded-xl border border-input bg-background px-4 py-3 text-card-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
@@ -78,6 +77,8 @@ function LoginForm() {
               id="password"
               name="password"
               type={showPassword ? "text" : "password"}
+              aria-label="Contraseña"
+              data-testid="password-input"
               autoComplete="current-password"
               required
               className="w-full rounded-xl border border-input bg-background px-4 py-3 pr-12 text-card-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
@@ -85,6 +86,7 @@ function LoginForm() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
               className="absolute right-4 top-10 text-muted-foreground hover:text-foreground transition-colors"
             >
               {showPassword ? (
@@ -105,14 +107,13 @@ function LoginForm() {
         </div>
 
         <div>
-          <motion.button
+          <button
             type="submit"
-            className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-lg hover:bg-primary/90 transition-all border border-border"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            data-testid="login-submit-button"
+            className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-lg hover:bg-primary/90 transition-all border border-border cursor-pointer active:scale-[0.98]"
           >
             Iniciar Sesión
-          </motion.button>
+          </button>
         </div>
       </form>
 
@@ -125,7 +126,7 @@ function LoginForm() {
           Regístrate aquí
         </Link>
       </p>
-    </motion.div>
+    </div>
   );
 }
 

@@ -17,6 +17,8 @@ import {
 } from "@/features/cart/repositories/stockRepository"
 import type { OrderStatus, OrderFilters, PaginatedOrders, OrderWithRelations } from "@/features/orders/types/order.types"
 import type { OrderItem } from "@/features/orders/types/order.types"
+import { canTransitionOrder } from "./orderStatusTransitions"
+import { createAuditLog } from "@/features/admin/services/auditService"
 
 // ============================================
 // READ
@@ -53,6 +55,18 @@ export async function updateOrderStatus(
 ): Promise<{ success: boolean; error?: string }> {
   const client = await createClient()
   try {
+    const currentOrder = await findOrderById(client, orderId)
+    if (!currentOrder) {
+      return { success: false, error: "Orden no encontrada." }
+    }
+
+    if (!canTransitionOrder(currentOrder.status, newStatus)) {
+      return {
+        success: false,
+        error: `Transición no permitida de ${currentOrder.status} a ${newStatus}.`,
+      }
+    }
+
     await repoUpdateOrderStatus(client, orderId, newStatus)
     return { success: true }
   } catch (err) {
@@ -66,10 +80,11 @@ export async function updateOrderStatus(
 
 /**
  * Iterates order items and increments stock back to each product/variant.
- * Does NOT change the order status.
+ * Atomic guard via stock_returned column ensures stock cannot be returned twice.
  */
 export async function rollbackOrderStock(
-  orderId: string
+  orderId: string,
+  preloadedItems?: { product_id: string; variant_id: string | null; quantity: number }[]
 ): Promise<{ success: boolean; error?: string }> {
   const client = await createClient()
 
@@ -86,22 +101,163 @@ export async function rollbackOrderStock(
     return { success: false, error: "Database error during rollback" }
   }
 
+  // Si ya se devolvió el stock previamente, no duplicamos
   if (!data || data.length === 0) {
-    return { success: false, error: "STOCK_ALREADY_RETURNED" }
+    return { success: true }
   }
 
-  const items = await findOrderItems(client, orderId)
+  const items = preloadedItems && preloadedItems.length > 0
+    ? preloadedItems
+    : await findOrderItems(client, orderId)
+
   if (!items || items.length === 0) {
-    return { success: false, error: "No items found for this order" }
+    return { success: true }
   }
 
-  for (const item of items) {
-    if (item.variant_id) {
-      await incrementSkuStock(client, item.variant_id, item.quantity)
-    } else {
-      await incrementProductStock(client, item.product_id, item.quantity)
+  // Ejecución paralela de incremento de stock
+  await Promise.all(
+    items.map(async (item) => {
+      if (item.variant_id) {
+        await incrementSkuStock(client, item.variant_id, item.quantity)
+      } else {
+        await incrementProductStock(client, item.product_id, item.quantity)
+      }
+    })
+  )
+
+  return { success: true }
+}
+
+/**
+ * Cancels an order using the state machine, rolls back stock, records audit log.
+ */
+export async function cancelOrder(
+  orderId: string,
+  reason: string,
+  adminUser?: { id: string; email: string }
+): Promise<{ success: boolean; error?: string }> {
+  if (!reason || reason.trim() === "") {
+    return { success: false, error: "El motivo de cancelación es obligatorio." }
+  }
+
+  const client = await createClient()
+
+  // Consulta ligera optimizada
+  const { data: order, error: orderError } = await client
+    .from("orders")
+    .select("id, status, total_amount, customer_email, customer_name, payment_method, order_items(product_id, variant_id, quantity)")
+    .eq("id", orderId)
+    .single()
+
+  if (orderError || !order) {
+    return { success: false, error: "Orden no encontrada." }
+  }
+
+  // 1. Validar con la Máquina de Estados
+  if (!canTransitionOrder(order.status as OrderStatus, "DECLINED")) {
+    return {
+      success: false,
+      error: `No se puede cancelar una orden que ya está en estado ${order.status}.`,
     }
   }
+
+  // 2. Revertir stock en paralelo si aún no ha sido devuelto
+  const items = (order.order_items || []) as { product_id: string; variant_id: string | null; quantity: number }[]
+  const rollbackResult = await rollbackOrderStock(orderId, items)
+  if (!rollbackResult.success) {
+    return { success: false, error: rollbackResult.error || "Error al revertir stock" }
+  }
+
+  // 3. Actualizar estado y metadatos de cancelación
+  const { error: updateError } = await client
+    .from("orders")
+    .update({
+      status: "DECLINED",
+      is_paid: false,
+      cancellation_reason: reason.trim(),
+      cancelled_at: new Date().toISOString(),
+      cancelled_by: adminUser?.id || null,
+    })
+    .eq("id", orderId)
+
+  if (updateError) {
+    console.error("Error updating order to DECLINED:", updateError)
+    return { success: false, error: updateError.message }
+  }
+
+  // 4. Registrar Log de Auditoría (no bloqueante)
+  createAuditLog(client, {
+    user_id: adminUser?.id || null,
+    user_email: adminUser?.email || null,
+    action: "ORDER_CANCELLED",
+    target_type: "order",
+    target_id: orderId,
+    reason: reason.trim(),
+    metadata: {
+      previous_status: order.status,
+      total_amount: order.total_amount,
+      customer_email: order.customer_email,
+      customer_name: order.customer_name,
+      payment_method: order.payment_method,
+    },
+  }).catch((err) => console.error("Error al registrar audit log:", err))
+
+  return { success: true }
+}
+
+/**
+ * Marks an approved order as paid/collected by delivery agent.
+ */
+export async function markOrderAsPaid(
+  orderId: string,
+  adminUser?: { id: string; email: string },
+  paymentDetails?: {
+    method: string
+    amountReceived?: number
+    changeAmount?: number
+    payments?: { method: string; amount: number }[]
+  }
+): Promise<{ success: boolean; error?: string }> {
+  const client = await createClient()
+  const order = await findOrderById(client, orderId)
+  if (!order) {
+    return { success: false, error: "Orden no encontrada." }
+  }
+
+  if (order.status !== "APPROVED") {
+    return { success: false, error: "Solo las órdenes aprobadas pueden marcarse como pagadas." }
+  }
+
+  const { error } = await client
+    .from("orders")
+    .update({ is_paid: true })
+    .eq("id", orderId)
+
+  if (error) {
+    console.error("Error marking order as paid:", error)
+    return { success: false, error: error.message }
+  }
+
+  const methodLabel = paymentDetails?.method ? paymentDetails.method.toUpperCase() : "EFECTIVO"
+  let auditReason = `Pago contra entrega recaudado vía ${methodLabel}`
+  if (paymentDetails?.amountReceived && paymentDetails.changeAmount !== undefined) {
+    auditReason += ` (Recibido: $${paymentDetails.amountReceived.toLocaleString()}, Cambio: $${paymentDetails.changeAmount.toLocaleString()})`
+  }
+
+  createAuditLog(client, {
+    user_id: adminUser?.id || null,
+    user_email: adminUser?.email || null,
+    action: "PAYMENT_COLLECTED",
+    target_type: "order",
+    target_id: orderId,
+    reason: auditReason,
+    metadata: {
+      total_amount: order.total_amount,
+      customer_email: order.customer_email || order.profiles?.email,
+      customer_name: order.customer_name,
+      payment_details: (paymentDetails as unknown as Record<string, unknown>) || { method: "efectivo" },
+    },
+  }).catch((err) => console.error("Error creando audit log de pago:", err))
 
   return { success: true }
 }
@@ -119,13 +275,9 @@ export async function markOrderAsError(
     return { success: false, error: `Order is not PENDING (current: ${currentOrder.status})` }
   }
 
-  const items = await findOrderItems(client, orderId)
-  for (const item of items) {
-    if (item.variant_id) {
-      await incrementSkuStock(client, item.variant_id, item.quantity)
-    } else {
-      await incrementProductStock(client, item.product_id, item.quantity)
-    }
+  const rollback = await rollbackOrderStock(orderId)
+  if (!rollback.success) {
+    return rollback
   }
 
   await repoUpdateOrderStatus(client, orderId, "ERROR")
