@@ -2,7 +2,9 @@ import type { NextConfig } from "next";
 import type { Configuration, RuleSetRule } from "webpack";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 
-initOpenNextCloudflareForDev();
+if (process.env.NODE_ENV === "development") {
+  initOpenNextCloudflareForDev();
+}
 
 const nextConfig: NextConfig = {
   output: "standalone",
