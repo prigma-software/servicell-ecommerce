@@ -1,4 +1,6 @@
 import { Resend } from "resend"
+import { notificationsConfig } from "@/config/notifications.config"
+import { whatsappService } from "@/shared/services/whatsapp.service"
 
 const siteName = process.env.NEXT_PUBLIC_SITE_NAME || "Prigma Comercio"
 const siteUrl =
@@ -16,15 +18,19 @@ export type OrderEmailItem = {
   sku_code?: string | null
 }
 
-export type OrderEmailData = {
+export type OrderNotificationData = {
   orderId: string
   customerName: string
   customerEmail: string
+  customerPhone?: string | null
   shippingAddress: string
   totalAmount: number
   wompiTransactionId?: string | null
   items: OrderEmailItem[]
 }
+
+// Alias de compatibilidad hacia atrás
+export type OrderEmailData = OrderNotificationData
 
 // -------------------------------------------------------
 // Formato de precio
@@ -184,9 +190,9 @@ function buildEmailHtml(data: OrderEmailData): string {
 }
 
 // -------------------------------------------------------
-// Función principal de envío
+// Envíos Resend (Email)
 // -------------------------------------------------------
-export async function sendOrderConfirmationEmail(data: OrderEmailData): Promise<void> {
+async function sendOrderConfirmationResend(data: OrderNotificationData): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY
   const fromEmail = process.env.RESEND_FROM_EMAIL || `noreply@${process.env.NEXT_PUBLIC_SITE_URL?.replace(/https?:\/\//, "") || "example.com"}`
 
@@ -330,7 +336,7 @@ function buildManualEmailHtml(data: OrderEmailData): string {
   `.trim()
 }
 
-export async function sendManualOrderCreatedEmail(data: OrderEmailData): Promise<void> {
+async function sendManualOrderResend(data: OrderNotificationData): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY
   const fromEmail = process.env.RESEND_FROM_EMAIL || `noreply@${(process.env.NEXT_PUBLIC_SITE_URL || "example.com").replace("https://", "").replace("http://", "")}`
   const adminEmail = process.env.ADMIN_EMAIL || fromEmail
@@ -359,4 +365,137 @@ export async function sendManualOrderCreatedEmail(data: OrderEmailData): Promise
   } catch (err) {
     console.error("[Email] Error inesperado enviando email de orden manual:", err)
   }
+}
+
+// -------------------------------------------------------
+// Envíos WhatsApp Cloud API
+// -------------------------------------------------------
+async function sendOrderConfirmationWhatsApp(data: OrderNotificationData): Promise<void> {
+  if (!data.customerPhone) return
+
+  const orderShortId = data.orderId.slice(0, 8).toUpperCase()
+  const formattedTotal = formatCOP(data.totalAmount)
+  const portalUrl = `${siteUrl}/orders`
+
+  if (notificationsConfig.whatsapp.useTemplates) {
+    // Parámetros estandarizados de la plantilla aprobada en Meta:
+    // {{1}}: Nombre cliente, {{2}}: ID pedido, {{3}}: Total pagado, {{4}}: Enlace portal
+    const params = [data.customerName, orderShortId, formattedTotal, portalUrl]
+    await whatsappService.sendTemplate(
+      data.customerPhone,
+      notificationsConfig.whatsapp.templates.orderConfirmation,
+      params
+    )
+  } else {
+    // Modo desarrollo / sandbox con texto libre
+    const itemsSummary = data.items
+      .map((i) => `• ${i.name} x${i.quantity} (${formatCOP(i.price_at_purchase * i.quantity)})`)
+      .join("\n")
+
+    const text = [
+      `🛍️ *¡Pedido Confirmado!* #${orderShortId}`,
+      ``,
+      `Hola *${data.customerName}*, tu compra ha sido confirmada con éxito.`,
+      ``,
+      `*Total pagado:* ${formattedTotal}`,
+      `*Dirección de entrega:* ${data.shippingAddress}`,
+      ``,
+      `*Resumen de compra:*`,
+      itemsSummary,
+      ``,
+      `Puedes consultar los detalles de tu compra en:`,
+      portalUrl,
+      ``,
+      `¡Gracias por comprar en *${siteName}*!`,
+    ].join("\n")
+
+    await whatsappService.sendText(data.customerPhone, text)
+  }
+}
+
+async function sendManualOrderWhatsApp(data: OrderNotificationData): Promise<void> {
+  if (!data.customerPhone) return
+
+  const orderShortId = data.orderId.slice(0, 8).toUpperCase()
+  const formattedTotal = formatCOP(data.totalAmount)
+
+  if (notificationsConfig.whatsapp.useTemplates) {
+    // Parámetros estandarizados de la plantilla aprobada en Meta:
+    // {{1}}: Nombre cliente, {{2}}: ID pedido, {{3}}: Total a pagar, {{4}}: URL tienda
+    const params = [data.customerName, orderShortId, formattedTotal, siteUrl]
+    await whatsappService.sendTemplate(
+      data.customerPhone,
+      notificationsConfig.whatsapp.templates.manualOrderPending,
+      params
+    )
+  } else {
+    // Modo desarrollo / sandbox con texto libre
+    const itemsSummary = data.items
+      .map((i) => `• ${i.name} x${i.quantity} (${formatCOP(i.price_at_purchase * i.quantity)})`)
+      .join("\n")
+
+    const text = [
+      `🕒 *Pedido Recibido (Pendiente de Pago)* #${orderShortId}`,
+      ``,
+      `Hola *${data.customerName}*, hemos recibido tu pedido y hemos reservado tus productos.`,
+      ``,
+      `*Total a pagar:* ${formattedTotal}`,
+      `*Dirección de entrega:* ${data.shippingAddress}`,
+      ``,
+      `*Resumen del pedido:*`,
+      itemsSummary,
+      ``,
+      `Nos pondremos en contacto contigo pronto para coordinar el pago.`,
+      ``,
+      `*${siteName}*`,
+    ].join("\n")
+
+    await whatsappService.sendText(data.customerPhone, text)
+  }
+}
+
+// -------------------------------------------------------
+// Despachador Unificado y Multicanal
+// -------------------------------------------------------
+export async function sendOrderNotification(
+  data: OrderNotificationData,
+  type: "CONFIRMATION" | "MANUAL_PENDING"
+): Promise<void> {
+  const tasks: Promise<void>[] = []
+
+  // Canal Email (Resend)
+  if (notificationsConfig.channels.email && data.customerEmail) {
+    tasks.push(
+      type === "CONFIRMATION"
+        ? sendOrderConfirmationResend(data)
+        : sendManualOrderResend(data)
+    )
+  }
+
+  // Canal WhatsApp (Meta Cloud API)
+  if (notificationsConfig.channels.whatsapp && data.customerPhone) {
+    tasks.push(
+      type === "CONFIRMATION"
+        ? sendOrderConfirmationWhatsApp(data)
+        : sendManualOrderWhatsApp(data)
+    )
+  }
+
+  if (tasks.length === 0) {
+    return
+  }
+
+  // Ejecución concurrente aislada: ningún canal bloquea o tumba al otro
+  await Promise.allSettled(tasks)
+}
+
+// -------------------------------------------------------
+// Fachadas Públicas Retrocompatibles
+// -------------------------------------------------------
+export async function sendOrderConfirmationEmail(data: OrderNotificationData): Promise<void> {
+  await sendOrderNotification(data, "CONFIRMATION")
+}
+
+export async function sendManualOrderCreatedEmail(data: OrderNotificationData): Promise<void> {
+  await sendOrderNotification(data, "MANUAL_PENDING")
 }

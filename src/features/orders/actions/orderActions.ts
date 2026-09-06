@@ -111,11 +111,13 @@ export async function approveManualOrder(
     })
 
     const customerEmail = order.customer_email || order.profiles?.email
-    if (customerEmail) {
+    const customerPhone = order.customer_phone || null
+    if (customerEmail || customerPhone) {
       const emailData = {
         orderId: order.id,
         customerName: order.customer_name || "Cliente",
-        customerEmail,
+        customerEmail: customerEmail || "",
+        customerPhone,
         shippingAddress: order.shipping_address || "",
         totalAmount: order.total_amount,
         items: (order.order_items || []).map(item => ({
@@ -125,7 +127,7 @@ export async function approveManualOrder(
           sku_code: item.product_skus?.sku_code || null
         }))
       }
-      sendOrderConfirmationEmail(emailData).catch(console.error)
+      await sendOrderConfirmationEmail(emailData)
     }
 
     revalidatePath("/admin/orders")

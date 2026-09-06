@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { runCleanup } from "@/features/cart/services/cleanupService"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createAuditLog } from "@/features/admin/services/auditService"
@@ -12,7 +12,17 @@ import {
 } from "@/features/cart/repositories/stockRepository"
 import { verificarLicencia } from "@/shared/actions/licenseActions"
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET
+  const authHeader = request.headers.get("authorization")
+
+  // Protect endpoint: require CRON_SECRET in production or if CRON_SECRET is configured
+  if (process.env.NODE_ENV === "production" || cronSecret) {
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+  }
+
   try {
     const adminClient = await createAdminClient()
     const results = {

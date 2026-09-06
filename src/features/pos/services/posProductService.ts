@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { sanitizeSearchTerm } from "@/shared/utils/security"
 
 type Category = {
   id: number
@@ -39,8 +40,9 @@ export async function getProductsForPOS(
     .eq("active", true)
     .eq("archived", false)
 
-  if (search) {
-    query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`)
+  const sanitized = sanitizeSearchTerm(search)
+  if (sanitized !== "") {
+    query = query.or(`name.ilike.%${sanitized}%,description.ilike.%${sanitized}%`)
   }
 
   if (categoryId) {

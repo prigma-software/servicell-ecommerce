@@ -41,12 +41,14 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# AI agent folders
+# AI agent and IDE folders
 .agents/
 .claude/
 .junie/
 .windsurf/
 .trae/
+.cursor/
+.vscode/
 
 # skills lock
 skills-lock.json

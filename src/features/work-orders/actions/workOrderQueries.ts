@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { WorkOrder } from "../types/work-order.types";
+import { sanitizeSearchTerm } from "@/shared/utils/security";
 
 export async function getWorkOrders(
   status?: string,
@@ -16,8 +17,9 @@ export async function getWorkOrders(
     query = query.eq("status", status);
   }
 
-  if (search) {
-    query = query.or(`customer_name.ilike.%${search}%,customer_phone.ilike.%${search}%,tracking_id.ilike.%${search}%,custom_metadata::text.ilike.%${search}%`);
+  const sanitized = sanitizeSearchTerm(search);
+  if (sanitized !== "") {
+    query = query.or(`customer_name.ilike.%${sanitized}%,customer_phone.ilike.%${sanitized}%,tracking_id.ilike.%${sanitized}%,custom_metadata::text.ilike.%${sanitized}%`);
   }
 
   const { data, error } = await query;

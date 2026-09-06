@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { assertAdmin } from "@/shared/utils/authGuards"
 import {
   getAllUsers as svcGetAllUsers,
   getUserDetails as svcGetUserDetails,
@@ -34,14 +35,40 @@ export async function getAllUsers(options?: {
   role?: UserRole
   search?: string
 }) {
+  await assertAdmin()
   return svcGetAllUsers(options)
 }
 
 export async function getUserDetails(userId: string) {
+  await assertAdmin()
   return svcGetUserDetails(userId)
 }
 
 export async function updateUserRole(userId: string, role: UserRole) {
+  const caller = await assertAdmin()
+
+  // Regla Anti-Lockout 1: Nadie puede revocar su propio rol de administrador
+  if (caller.id === userId && role !== "administrador") {
+    throw new Error("Operación denegada: No puedes revocar tu propia cuenta de administrador.")
+  }
+
+  // Regla Anti-Lockout 2: Si se va a degradar un admin, verificar que quede al menos otro activo
+  if (role !== "administrador") {
+    const supabase = await createClient()
+    const { count, error } = await supabase
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "administrador")
+
+    if (error) {
+      throw new Error("Error verificando administradores activos: " + error.message)
+    }
+
+    if ((count ?? 0) <= 1) {
+      throw new Error("Operación denegada: No puedes revocar al único administrador activo del sistema.")
+    }
+  }
+
   try {
     const adminClient = await createAdminClient()
     await updateProfileRole(adminClient, userId, role)

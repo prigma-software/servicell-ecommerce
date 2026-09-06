@@ -48,11 +48,12 @@ export async function createOrder(
     const client = await createClient()
     const { data: { user } } = await client.auth.getUser()
     
-    if (user?.email) {
+    if (user?.email || customerPhone) {
       const emailData = {
         orderId,
         customerName,
-        customerEmail: user.email,
+        customerEmail: user?.email || "",
+        customerPhone: customerPhone || null,
         shippingAddress,
         totalAmount: subtotalAmount + shippingCost,
         items: items.map(item => ({
@@ -63,8 +64,8 @@ export async function createOrder(
         }))
       }
       
-      // Fire and forget (don't await so it doesn't block response)
-      sendManualOrderCreatedEmail(emailData).catch(console.error)
+      // Await safely to ensure execution in serverless runtimes
+      await sendManualOrderCreatedEmail(emailData)
     }
   }
   

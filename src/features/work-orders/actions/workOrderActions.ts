@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { WorkOrder, WorkOrderStatus, CreateWorkOrderDTO } from "../types/work-order.types";
 import { revalidatePath } from "next/cache";
 import { WorkOrderNotifier } from "../services/work-order-notifier";
-import { ResendNotificationAdapter } from "../services/resend-notification.adapter";
 
 export async function createWorkOrder(data: CreateWorkOrderDTO) {
   const supabase = await createClient();
@@ -30,7 +29,7 @@ export async function createWorkOrder(data: CreateWorkOrderDTO) {
 
   // Notify user about creation
   console.log(`🔔 [WorkOrderActions] Iniciando notificación para nueva orden: ${workOrder.id}`);
-  const notifier = new WorkOrderNotifier(new ResendNotificationAdapter());
+  const notifier = new WorkOrderNotifier();
   await notifier.notifyCreation(workOrder as WorkOrder);
   console.log(`🔔 [WorkOrderActions] Notificación de creación finalizada.`);
 
@@ -54,7 +53,7 @@ export async function updateWorkOrderStatus(id: string, newStatus: WorkOrderStat
   }
 
   // Notify user
-  const notifier = new WorkOrderNotifier(new ResendNotificationAdapter());
+  const notifier = new WorkOrderNotifier();
   await notifier.notifyStatusChange(workOrder as WorkOrder, newStatus);
 
   revalidatePath(`/admin/work-orders`);
@@ -153,7 +152,7 @@ export async function closeWorkOrderAndBill(
       return { error: updateError.message };
     }
 
-    const notifier = new WorkOrderNotifier(new ResendNotificationAdapter());
+    const notifier = new WorkOrderNotifier();
     await notifier.notifyStatusChange(workOrder as WorkOrder, "DELIVERED");
 
     revalidatePath(`/admin/work-orders`);

@@ -14,7 +14,8 @@
     "test:e2e:ui": "playwright test --ui",
     "deploy": "npx opennextjs-cloudflare build && npx opennextjs-cloudflare deploy",
     "cf-dev": "npx wrangler dev",
-    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "supabase": "node scripts/supabase.mjs"
   },
   "dependencies": {
     "@cf-wasm/photon": "^0.3.5",

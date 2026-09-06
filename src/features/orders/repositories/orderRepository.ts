@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { OrderStatus, OrderFilters } from "@/features/orders/types/order.types"
+import { sanitizeSearchTerm } from "@/shared/utils/security"
 
 // ============================================
 // READ
@@ -24,8 +25,9 @@ export async function findOrders(
     query = query.eq("status", filters.status)
   }
 
-  if (filters.search && filters.search.trim() !== "") {
-    const searchTerm = `%${filters.search.trim()}%`
+  const sanitized = sanitizeSearchTerm(filters.search)
+  if (sanitized !== "") {
+    const searchTerm = `%${sanitized}%`
     query = query.or(
       `customer_name.ilike.${searchTerm},customer_email.ilike.${searchTerm},wompi_transaction_id.ilike.${searchTerm}`
     )
@@ -188,6 +190,7 @@ export async function findOrderWithItemsForEmail(client: SupabaseClient, id: str
       id,
       customer_name,
       customer_email,
+      customer_phone,
       shipping_address,
       total_amount,
       wompi_transaction_id,
@@ -226,8 +229,9 @@ export async function findOrdersForExport(
     query = query.eq("status", filters.status)
   }
 
-  if (filters.search && filters.search.trim() !== "") {
-    const searchTerm = `%${filters.search.trim()}%`
+  const sanitized = sanitizeSearchTerm(filters.search)
+  if (sanitized !== "") {
+    const searchTerm = `%${sanitized}%`
     query = query.or(
       `customer_name.ilike.${searchTerm},customer_email.ilike.${searchTerm},wompi_transaction_id.ilike.${searchTerm}`
     )

@@ -20,6 +20,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(result)
   } catch (error) {
+    const message = (error as Error).message
+    if (message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    if (message === "Forbidden") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
     console.error("Error fetching users:", error)
     return NextResponse.json(
       { error: "Error fetching users" },

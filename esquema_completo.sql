@@ -1537,7 +1537,24 @@ CREATE POLICY "Option values are viewable by everyone." ON "public"."product_opt
 
 
 
-CREATE POLICY "Public profiles are viewable by everyone." ON "public"."profiles" FOR SELECT USING (true);
+-- Función SECURITY DEFINER para verificar rol de administrador sin recursión en RLS
+CREATE OR REPLACE FUNCTION "public"."is_admin"()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'administrador'::public.user_role
+  );
+$$;
+
+CREATE POLICY "Profiles viewable by self or admin" ON "public"."profiles"
+FOR SELECT USING (
+  ("auth"."uid"() = "id") OR "public"."is_admin"()
+);
 
 
 

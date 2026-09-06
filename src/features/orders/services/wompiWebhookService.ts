@@ -1,44 +1,99 @@
+import crypto from "crypto"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { sendOrderConfirmationEmail } from "@/features/orders/services/orderConfirmation"
 import {
   findOrderWithItemsForEmail,
 } from "@/features/orders/repositories/orderRepository"
 
-async function sha256Hex(message: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(message)
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("")
+function safeCompareHex(a: string, b: string): boolean {
+  if (!a || !b) return false
+  // Hash both with SHA-256 to ensure two 32-byte buffers and prevent timingSafeEqual buffer length mismatch exceptions
+  const hashA = crypto.createHash("sha256").update(a.toLowerCase()).digest()
+  const hashB = crypto.createHash("sha256").update(b.toLowerCase()).digest()
+  return crypto.timingSafeEqual(hashA, hashB)
 }
 
-async function verifyWompiSignature(payload: unknown, checksumHeader: string | null): Promise<boolean> {
+function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+  return path.split(".").reduce((acc, part) => {
+    if (acc && typeof acc === "object") {
+      return (acc as Record<string, unknown>)[part]
+    }
+    return undefined
+  }, obj as unknown)
+}
+
+async function verifyWompiSignature(
+  payload: WompiTransactionEvent,
+  checksumHeader: string | null
+): Promise<{ valid: boolean; reason?: string }> {
   const eventsSecret = process.env.WOMPI_EVENTS_SECRET
 
+  // En producción, es obligatorio tener configurado WOMPI_EVENTS_SECRET
   if (!eventsSecret || eventsSecret.startsWith("test_events_REEMPLAZAR")) {
-    console.warn("[Wompi Webhook] WOMPI_EVENTS_SECRET no configurado. Omitiendo validación.")
-    return true
+    if (process.env.NODE_ENV === "production") {
+      console.error("[Wompi Webhook] WOMPI_EVENTS_SECRET no configurado en producción.")
+      return { valid: false, reason: "WOMPI_EVENTS_SECRET missing in production" }
+    }
+    console.warn("[Wompi Webhook] WOMPI_EVENTS_SECRET no configurado en desarrollo. Omitiendo validación.")
+    return { valid: true }
   }
 
-  if (!checksumHeader) {
-    console.error("[Wompi Webhook] Falta el header x-event-checksum.")
-    return false
+  const checksum = checksumHeader || payload.signature?.checksum
+  if (!checksum) {
+    console.error("[Wompi Webhook] Falta checksum (en header x-event-checksum o signature.checksum).")
+    return { valid: false, reason: "Missing checksum" }
   }
 
-  const timestamp = (payload as { timestamp?: string }).timestamp
-  if (!timestamp) {
+  // 1. Protección Anti-Replay: Validar frescura temporal (máximo 10 minutos de diferencia)
+  const rawTimestamp = payload.timestamp
+  if (rawTimestamp === undefined || rawTimestamp === null) {
     console.error("[Wompi Webhook] Falta el campo timestamp en el payload.")
-    return false
+    return { valid: false, reason: "Missing timestamp" }
   }
 
-  const stringToHash = `${timestamp}${checksumHeader}${eventsSecret}`
-  const expectedSignature = await sha256Hex(stringToHash)
+  let timestampMs: number
+  if (typeof rawTimestamp === "number") {
+    // Si viene en segundos (epoch < 1e11), convertir a ms
+    timestampMs = rawTimestamp < 1e11 ? rawTimestamp * 1000 : rawTimestamp
+  } else {
+    timestampMs = Number(rawTimestamp) < 1e11 ? Number(rawTimestamp) * 1000 : Number(rawTimestamp)
+    if (isNaN(timestampMs)) {
+      timestampMs = new Date(rawTimestamp).getTime()
+    }
+  }
 
-  const isValid = expectedSignature === checksumHeader
+  const TEN_MINUTES_MS = 10 * 60 * 1000
+  if (isNaN(timestampMs) || Math.abs(Date.now() - timestampMs) > TEN_MINUTES_MS) {
+    console.error("[Wompi Webhook] Timestamp expirado o inválido (Replay Protection):", rawTimestamp)
+    return { valid: false, reason: "Timestamp expired or invalid" }
+  }
+
+  // 2. Concatenación de propiedades según especificación oficial de Wompi:
+  // Concatenación de valores de signature.properties (ej. transaction.id + transaction.status + transaction.amount_in_cents) + timestamp + eventsSecret
+  const properties = payload.signature?.properties || [
+    "transaction.id",
+    "transaction.status",
+    "transaction.amount_in_cents",
+  ]
+
+  let concatenatedValues = ""
+  for (const prop of properties) {
+    const val = getNestedValue(payload.data as Record<string, unknown>, prop)
+    if (val !== undefined && val !== null) {
+      concatenatedValues += String(val)
+    }
+  }
+
+  const stringToHash = `${concatenatedValues}${rawTimestamp}${eventsSecret}`
+  const calculatedChecksum = crypto.createHash("sha256").update(stringToHash).digest("hex")
+
+  const isValid = safeCompareHex(calculatedChecksum, checksum)
   if (!isValid) {
     console.error("[Wompi Webhook] Firma inválida.")
+    return { valid: false, reason: "Firma inválida" }
   }
-  return isValid
+
+  return { valid: true }
 }
 
 export type WompiTransactionEvent = {
@@ -47,18 +102,26 @@ export type WompiTransactionEvent = {
     transaction: {
       id: string
       reference: string
+      amount_in_cents?: number
       status: "APPROVED" | "DECLINED" | "ERROR" | "VOIDED"
+      [key: string]: unknown
     }
   }
-  timestamp?: string
+  signature?: {
+    properties?: string[]
+    checksum?: string
+  }
+  timestamp: number | string
+  sent_at?: string
 }
 
 export async function processWompiWebhook(
   payload: WompiTransactionEvent,
   checksumHeader: string | null
 ): Promise<{ received: boolean; skipped?: boolean; error?: string }> {
-  if (!await verifyWompiSignature(payload, checksumHeader)) {
-    return { received: false, error: "Firma inválida" }
+  const verification = await verifyWompiSignature(payload, checksumHeader)
+  if (!verification.valid) {
+    return { received: false, error: verification.reason || "Firma inválida" }
   }
 
   const event = payload.event
@@ -75,10 +138,10 @@ export async function processWompiWebhook(
   const newStatus = transaction.status
   const supabase = await createAdminClient()
 
-  // Find the order to get the reservation_id
+  // Find the order to get the reservation_id and total_amount
   const { data: orderData, error: orderError } = await supabase
     .from("orders")
-    .select("id, reservation_id, status")
+    .select("id, reservation_id, status, total_amount")
     .eq("id", orderId)
     .single()
 
@@ -88,6 +151,14 @@ export async function processWompiWebhook(
   }
 
   if (newStatus === "APPROVED") {
+    // Protección contra manipulación de monto
+    if (transaction.amount_in_cents !== undefined && orderData.total_amount !== undefined) {
+      const expectedAmountInCents = Math.round(orderData.total_amount) * 100
+      if (transaction.amount_in_cents < expectedAmountInCents) {
+        console.error(`[Wompi Webhook] Monto pagado (${transaction.amount_in_cents}) es menor al monto de la orden (${expectedAmountInCents})`)
+        return { received: false, error: "Monto insuficiente" }
+      }
+    }
     // Call the idempotent RPC
     const { data: rpcResult, error: rpcError } = await supabase.rpc(
       "process_wompi_approved",
@@ -114,9 +185,9 @@ export async function processWompiWebhook(
       // Continue sending email, but maybe the admin needs to see it
     }
 
-    // Send confirmation email
+    // Send confirmation email / WhatsApp notification
     const order = await findOrderWithItemsForEmail(supabase, orderId)
-    if (order && order.customer_email) {
+    if (order && (order.customer_email || order.customer_phone)) {
       const items = (order.order_items || []).map((item: unknown) => {
         const i = item as {
           products?: { name: string }
@@ -136,6 +207,7 @@ export async function processWompiWebhook(
         orderId: order.id,
         customerName: order.customer_name || "Cliente",
         customerEmail: order.customer_email,
+        customerPhone: order.customer_phone,
         shippingAddress: order.shipping_address || "",
         totalAmount: order.total_amount,
         wompiTransactionId: transaction.id,

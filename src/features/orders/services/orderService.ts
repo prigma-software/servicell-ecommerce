@@ -474,7 +474,35 @@ export async function createOrder(
     throw new Error("El total no coincide con los precios actuales. Por favor actualiza tu carrito.")
   }
 
-  const totalAmount = calculatedSubtotal + shippingCost
+  // Validación estricta del costo de envío en servidor
+  if (typeof shippingCost !== "number" || isNaN(shippingCost) || shippingCost < 0) {
+    throw new Error("Costo de envío inválido.")
+  }
+
+  let verifiedShippingCost = shippingCost
+  if (shippingZoneId) {
+    const { data: zone, error: zoneError } = await client
+      .from("shipping_zones")
+      .select("cost, free_threshold, active")
+      .eq("id", shippingZoneId)
+      .single()
+
+    if (zoneError || !zone || !zone.active) {
+      throw new Error("Zona de envío inválida o inactiva.")
+    }
+
+    const expectedShipping =
+      zone.free_threshold !== null && zone.free_threshold !== undefined && calculatedSubtotal >= zone.free_threshold
+        ? 0
+        : zone.cost
+
+    if (Math.abs(expectedShipping - shippingCost) > tolerance) {
+      throw new Error("El costo de envío no coincide con la tarifa oficial de la zona seleccionada.")
+    }
+    verifiedShippingCost = expectedShipping
+  }
+
+  const totalAmount = calculatedSubtotal + verifiedShippingCost
 
   const orderItemsData = items.map((i) => {
     let priceAtPurchase = 0
@@ -503,7 +531,7 @@ export async function createOrder(
       customer_email: userEmail,
       customer_phone: customerPhone,
       shipping_address: shippingAddress,
-      shipping_cost: shippingCost,
+      shipping_cost: verifiedShippingCost,
       shipping_zone_id: shippingZoneId || null,
     }
 
@@ -532,7 +560,7 @@ export async function createOrder(
     customer_email: userEmail,
     customer_phone: customerPhone,
     shipping_address: shippingAddress,
-    shipping_cost: shippingCost,
+    shipping_cost: verifiedShippingCost,
     shipping_zone_id: shippingZoneId || null,
     // @ts-expect-error - DB types are out of sync with migration
     reservation_id: reservationId || null

@@ -7,14 +7,12 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
-  // If the env vars are not set, skip proxy check. You can remove this
-  // once you setup the project.
+  // If the env vars are not set, skip proxy check.
   if (!hasEnvVars) {
     return supabaseResponse;
   }
 
-  // With Fluid compute, don't put this client in a global environment
-  // variable. Always create a new one on each request.
+  // With Fluid compute, don't put this client in a global environment variable.
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -30,9 +28,15 @@ export async function updateSession(request: NextRequest) {
           supabaseResponse = NextResponse.next({
             request,
           });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // Apply secure and sameSite flags while preserving client readability for @supabase/ssr
+            const secureOptions = {
+              ...options,
+              secure: process.env.NODE_ENV === "production",
+              sameSite: options?.sameSite || ("lax" as const),
+            };
+            supabaseResponse.cookies.set(name, value, secureOptions);
+          });
         },
       },
     },
@@ -41,43 +45,45 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getUser();
   const user = data?.user;
 
-  // Protect admin routes
-  if (request.nextUrl.pathname.startsWith("/admin")) {
+  const isAdminPath = request.nextUrl.pathname.startsWith("/admin");
+  const isAdminApiPath = request.nextUrl.pathname.startsWith("/api/admin");
+
+  // Protect admin routes and admin API endpoints
+  if (isAdminPath || isAdminApiPath) {
     if (!user) {
+      if (isAdminApiPath) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    
+
     // Check role in profiles
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single();
-      
+
     if (!profile || profile.role !== "administrador") {
+      if (isAdminApiPath) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
       return NextResponse.redirect(new URL("/", request.url));
     }
   }
 
-  // General auth protection if needed (can remove if only admin is protected)
-  if (
-    request.nextUrl.pathname.startsWith("/profile") && !user
-  ) {
+  // General auth protection for user profile
+  if (request.nextUrl.pathname.startsWith("/profile") && !user) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // IMPORTANT: You *must* return the supabaseResponse object as it is.
-  // If you're creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
+  // Set strict cache-control on private / admin routes to prevent caching of sensitive data
+  if (isAdminPath || isAdminApiPath || request.nextUrl.pathname.startsWith("/profile")) {
+    supabaseResponse.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, max-age=0, must-revalidate"
+    );
+  }
 
   return supabaseResponse;
 }
