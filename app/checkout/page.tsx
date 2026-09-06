@@ -105,11 +105,15 @@ export default function CheckoutPage() {
 
     if (items.length === 0) return
 
+    if (paymentMethod === 'wompi' && typeof (window as unknown as { WidgetCheckout?: unknown }).WidgetCheckout !== 'function') {
+      setError("La pasarela de pago Wompi aún no ha cargado o fue bloqueada por tu navegador. Por favor desactiva bloqueadores de anuncios o recarga la página.")
+      return
+    }
+
     setLoading(true)
     setError("")
+    let activeReservationId: string | null = reservationId
     try {
-      let activeReservationId = reservationId
-
       if (paymentMethod === 'wompi') {
         const newReservationId = await reserveStock(
           items.map((item) => ({
@@ -154,17 +158,36 @@ export default function CheckoutPage() {
       const amountInCents = Math.round(grandTotal) * 100
       const integritySignature = await getWompiIntegritySignature(orderId, amountInCents, "COP")
 
+      let cleanPhone = telefono ? telefono.replace(/\D/g, "") : ""
+      let phonePrefix = "+57"
+
+      if (cleanPhone.startsWith("57") && cleanPhone.length === 12) {
+        cleanPhone = cleanPhone.slice(2)
+      } else if (telefono && telefono.trim().startsWith("+")) {
+        const match = telefono.trim().match(/^(\+\d{1,3})\s*(.*)$/)
+        if (match) {
+          phonePrefix = match[1]
+          cleanPhone = match[2].replace(/\D/g, "")
+        }
+      }
+
+      const customerData: Record<string, unknown> = {
+        email: email,
+        fullName: nombre,
+      }
+
+      if (cleanPhone) {
+        customerData.phoneNumber = cleanPhone
+        customerData.phoneNumberPrefix = phonePrefix
+      }
+
       const widgetConfig: Record<string, unknown> = {
         currency: wompiWidgetDefaults.currency,
         amountInCents,
         reference: orderId,
         publicKey: wompiPublicKey,
         redirectUrl: wompiWidgetDefaults.redirectUrl,
-        customerData: {
-          email: email,
-          fullName: nombre,
-          phoneNumber: telefono,
-        },
+        customerData,
       }
 
       if (integritySignature) {
@@ -194,10 +217,16 @@ export default function CheckoutPage() {
         router.push(`/checkout/result?id=${transaction.id}&status=${transaction.status}`)
       })
     } catch (err: unknown) {
-      if (reservationId) {
-        cancelReservation()
+      if (activeReservationId) {
+        cancelReservation(activeReservationId)
       }
-      const messageText = err instanceof Error ? err.message : "Error al procesar. Verifica tu sesión."
+      const messageText = err instanceof Error 
+        ? err.message 
+        : (err && typeof err === 'object' && 'message' in err)
+          ? String((err as { message: unknown }).message)
+          : typeof err === 'string'
+            ? err
+            : "Error al procesar el pedido. Por favor, intenta nuevamente."
       setError(messageText)
     } finally {
       setLoading(false)

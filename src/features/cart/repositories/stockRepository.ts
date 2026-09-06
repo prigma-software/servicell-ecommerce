@@ -146,7 +146,7 @@ export async function createStockReservation(
 ) {
   const { data, error } = await client.rpc("create_stock_reservation", {
     p_user_id: userId,
-    p_items: JSON.stringify(items),
+    p_items: items as any,
     p_reservation_minutes: reservationMinutes,
   })
 

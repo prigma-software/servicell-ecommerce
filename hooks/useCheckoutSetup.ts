@@ -46,14 +46,14 @@ export function useCheckoutSetup(): UseCheckoutSetupReturn {
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("first_name, last_name, address, phone_number")
+          .select("first_name, last_name, address, phone")
           .eq("id", user.id)
           .single()
         if (profile) {
           const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(" ")
           if (fullName) setNombre(fullName)
           if (profile.address) setDireccion(profile.address)
-          if (profile.phone_number) setTelefono(profile.phone_number)
+          if (profile.phone) setTelefono(profile.phone)
         }
         if (user.email) setEmail(user.email)
       }

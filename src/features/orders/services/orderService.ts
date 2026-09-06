@@ -405,6 +405,48 @@ export async function createOrder(
   const skuMap = new Map(skus.map((s) => [s.id, s]))
   const productMap = new Map(products.map((p) => [p.id, p]))
 
+  let isReservationValid = false
+  if (paymentMethod === 'wompi') {
+    if (!reservationId) {
+      throw new Error("Se requiere una reserva de stock activa para procesar el pago con Wompi")
+    }
+
+    const { data: reservation, error: resError } = await client
+      .from("stock_reservations")
+      .select("id, user_id, status, expires_at, stock_reservation_items(product_id, variant_id, quantity)")
+      .eq("id", reservationId)
+      .single()
+
+    if (resError || !reservation) {
+      throw new Error("Reserva de stock no encontrada.")
+    }
+    if (reservation.user_id !== user.id) {
+      throw new Error("La reserva de stock no pertenece a este usuario.")
+    }
+    if (reservation.status !== "pending") {
+      throw new Error("La reserva de stock ya no está activa.")
+    }
+    if (!reservation.expires_at || new Date(reservation.expires_at) <= new Date()) {
+      throw new Error("La reserva de stock ha expirado. Por favor, intenta de nuevo.")
+    }
+
+    const reservedMap = new Map<string, number>()
+    for (const rItem of (reservation.stock_reservation_items as Array<{ product_id: string; variant_id: string | null; quantity: number }>) || []) {
+      const key = `${rItem.product_id}:${rItem.variant_id || "null"}`
+      reservedMap.set(key, (reservedMap.get(key) || 0) + rItem.quantity)
+    }
+
+    for (const item of items) {
+      const key = `${item.product_id}:${item.variant_id || "null"}`
+      const reservedQty = reservedMap.get(key) || 0
+      if (reservedQty < item.quantity) {
+        throw new Error(`La reserva no cubre la cantidad solicitada para: ${item.name || item.product_id}`)
+      }
+    }
+
+    isReservationValid = true
+  }
+
   let calculatedSubtotal = 0
 
   for (const item of items) {
@@ -413,12 +455,16 @@ export async function createOrder(
       if (!sku || !sku.active) throw new Error("Variante no disponible: " + item.name)
       const parent = productMap.get(sku.product_id)
       if (parent?.archived) throw new Error("Producto archivado: " + item.name)
-      if (sku.stock < item.quantity) throw new Error("Stock insuficiente para: " + item.name)
+      if (!isReservationValid && sku.stock < item.quantity) {
+        throw new Error("Stock insuficiente para: " + item.name)
+      }
       calculatedSubtotal += (sku.price_override ?? parent?.price ?? 0) * item.quantity
     } else {
       const product = productMap.get(item.product_id)
       if (!product || !product.active || product.archived) throw new Error("Producto no disponible: " + item.name)
-      if (product.stock < item.quantity) throw new Error("Stock insuficiente para: " + item.name)
+      if (!isReservationValid && product.stock < item.quantity) {
+        throw new Error("Stock insuficiente para: " + item.name)
+      }
       calculatedSubtotal += product.price * item.quantity
     }
   }
