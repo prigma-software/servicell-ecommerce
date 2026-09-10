@@ -13,10 +13,30 @@ export class WhatsAppService {
   private readonly apiVersion: string;
   private readonly timeoutMs: number = 4500;
 
-  constructor() {
-    this.phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  constructor(phoneNumberId?: string) {
+    const envMode = (process.env.WHATSAPP_ENV || "").toLowerCase();
+    const envSelectedId =
+      envMode === "test"
+        ? process.env.WHATSAPP_PHONE_NUMBER_ID_TEST
+        : envMode === "production"
+        ? process.env.WHATSAPP_PHONE_NUMBER_ID_PROD
+        : undefined;
+
+    this.phoneNumberId =
+      phoneNumberId ||
+      envSelectedId ||
+      process.env.WHATSAPP_PHONE_NUMBER_ID ||
+      process.env.WHATSAPP_PHONE_NUMBER_ID_PROD ||
+      process.env.WHATSAPP_PHONE_NUMBER_ID_TEST;
     this.accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
     this.apiVersion = process.env.WHATSAPP_API_VERSION || "v22.0";
+  }
+
+  /**
+   * Returns the active Phone Number ID being used.
+   */
+  public getPhoneNumberId(): string | undefined {
+    return this.phoneNumberId;
   }
 
   /**

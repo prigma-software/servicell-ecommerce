@@ -3,7 +3,6 @@ import { Montserrat, Varela_Round } from "next/font/google";
 import { ThemeProvider as NextThemeProvider } from "next-themes";
 import { Suspense } from "react";
 import { CartProvider } from "@/shared/components/CartProvider";
-import { LicenseProvider } from "@/shared/components/LicenseProvider";
 import { ThemeVariables } from "@/components/theme-provider";
 import { storeBranding } from "@/lib/constants/branding-store";
 import "./globals.css";
@@ -74,9 +73,7 @@ export default function RootLayout({
           >
             <Suspense fallback={<div className="h-16 border-b shadow-sm w-full top-0 bg-card" />}>
               <CartProvider>
-                <LicenseProvider>
-                  {children}
-                </LicenseProvider>
+                {children}
               </CartProvider>
             </Suspense>
           </NextThemeProvider>

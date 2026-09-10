@@ -1,7 +1,24 @@
 import Link from "next/link";
-import { User, ShoppingBag } from "lucide-react";
+import { User, ShoppingBag, Shield } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
 
-export default function ProfileLayout({ children }: { children: React.ReactNode }) {
+export default async function ProfileLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let isAdmin = false;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    isAdmin = profile?.role === "administrador";
+  }
+
   return (
     <div className="flex flex-col md:flex-row min-h-[calc(100vh-8rem)] bg-secondary rounded-lg overflow-hidden border">
       {/* Sidebar */}
@@ -12,7 +29,7 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
         <nav className="flex md:flex-col gap-2 p-4 overflow-x-auto md:overflow-visible">
           <Link
             href="/profile"
-            className="flex items-center gap-3 px-4 py-2 text-card-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
+            className="flex items-center gap-3 px-4 py-2 text-card-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors whitespace-nowrap"
           >
             <User className="w-5 h-5" />
             Mis Datos
@@ -24,6 +41,17 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
             <ShoppingBag className="w-5 h-5" />
             Mis Compras
           </Link>
+          {isAdmin && (
+            <div className="md:pt-4 md:mt-4 md:border-t md:border-border">
+              <Link
+                href="/admin"
+                className="flex items-center gap-3 px-4 py-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-md font-semibold transition-colors whitespace-nowrap"
+              >
+                <Shield className="w-5 h-5" />
+                Panel Admin
+              </Link>
+            </div>
+          )}
         </nav>
       </div>
 

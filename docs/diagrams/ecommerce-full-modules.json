@@ -1,0 +1,283 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Arquitectura Modular E-Commerce: Tienda Online, POS y Taller",
+    "output": "ecommerce-full-modules.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "online-funnel",
+        "label": "Embudo de Compra Online",
+        "focus": ["cart", "checkout", "online_orders", "products_stock", "supa_db"],
+        "note": "Validacion de carrito, reserva de stock por 15 min, pago en pasarela y generacion de pedidos."
+      },
+      {
+        "id": "in-store-ops",
+        "label": "Operacion Tienda y Taller",
+        "focus": ["pos_terminal", "work_orders", "sales_cash", "products_stock", "supa_db"],
+        "note": "Ventas directas en caja, recepcion de equipos en taller y control de repuestos usados."
+      },
+      {
+        "id": "shared-inventory",
+        "label": "Control de Inventario Central",
+        "focus": ["cart", "pos_terminal", "work_orders", "products_stock", "categories"],
+        "note": "El inventario unificado evita sobreventas entre la tienda online, el POS y el servicio tecnico."
+      },
+      {
+        "id": "platform-security",
+        "label": "Plataforma, RLS y Licencias",
+        "focus": ["supa_auth", "supa_db", "cron_cleanup", "saas_license"],
+        "note": "Seguridad RLS en Supabase, roles de usuario, limpieza automatica de carritos y licencia."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "cart",
+      "type": "backend",
+      "label": "Servicio Carrito",
+      "sublabel": "Reserva Stock (15 min)",
+      "pos": [50, 120],
+      "size": [150, 60],
+      "tag": "Anti-Sobrevendido"
+    },
+    {
+      "id": "checkout",
+      "type": "frontend",
+      "label": "Pasarela de Pago",
+      "sublabel": "Wompi / Stripe",
+      "pos": [50, 280],
+      "size": [150, 60]
+    },
+    {
+      "id": "online_orders",
+      "type": "backend",
+      "label": "Pedidos Online",
+      "sublabel": "Guias y Envíos",
+      "pos": [50, 440],
+      "size": [150, 60]
+    },
+    {
+      "id": "categories",
+      "type": "database",
+      "label": "Categorías",
+      "sublabel": "Taxonomía y Filtros",
+      "pos": [280, 120],
+      "size": [150, 60]
+    },
+    {
+      "id": "products_stock",
+      "type": "database",
+      "label": "Catálogo Maestro",
+      "sublabel": "Stock Unificado",
+      "brand": "supabase",
+      "pos": [280, 280],
+      "size": [150, 64],
+      "tag": "Inventario Único"
+    },
+    {
+      "id": "supa_db",
+      "type": "database",
+      "label": "Base de Datos",
+      "sublabel": "PostgreSQL con RLS",
+      "brand": "supabase",
+      "pos": [280, 440],
+      "size": [150, 64]
+    },
+    {
+      "id": "pos_terminal",
+      "type": "frontend",
+      "label": "Terminal POS",
+      "sublabel": "Venta Rápida en Caja",
+      "pos": [510, 120],
+      "size": [150, 60]
+    },
+    {
+      "id": "work_orders",
+      "type": "backend",
+      "label": "Servicio Técnico",
+      "sublabel": "Taller (Servicel)",
+      "pos": [510, 280],
+      "size": [150, 60]
+    },
+    {
+      "id": "sales_cash",
+      "type": "backend",
+      "label": "Caja y Ventas",
+      "sublabel": "Arqueo y Cierre",
+      "pos": [510, 440],
+      "size": [150, 60]
+    },
+    {
+      "id": "supa_auth",
+      "type": "security",
+      "label": "Auth y Roles",
+      "sublabel": "Admin, Cajero, Técnico",
+      "brand": "supabase",
+      "pos": [740, 120],
+      "size": [150, 60]
+    },
+    {
+      "id": "saas_license",
+      "type": "security",
+      "label": "Licencia Marca Blanca",
+      "sublabel": "Control Multi-Tenant",
+      "pos": [740, 280],
+      "size": [150, 60]
+    },
+    {
+      "id": "cron_cleanup",
+      "type": "cloud",
+      "label": "Tareas Cron",
+      "sublabel": "Liberar Stock Expirado",
+      "pos": [740, 440],
+      "size": [150, 60],
+      "tag": "Segundo Plano"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Dominio Tienda Online (E-Commerce)",
+      "wraps": ["cart", "checkout", "online_orders"]
+    },
+    {
+      "kind": "region",
+      "label": "Catálogo Maestro e Inventario",
+      "wraps": ["categories", "products_stock", "supa_db"]
+    },
+    {
+      "kind": "region",
+      "label": "Dominio Tienda Física y Taller",
+      "wraps": ["pos_terminal", "work_orders", "sales_cash"]
+    },
+    {
+      "kind": "region",
+      "label": "Plataforma y Gobernanza BaaS",
+      "wraps": ["supa_auth", "saas_license", "cron_cleanup"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "cart-to-checkout",
+      "from": "cart",
+      "to": "checkout",
+      "variant": "emphasis"
+    },
+    {
+      "id": "checkout-to-orders",
+      "from": "checkout",
+      "to": "online_orders",
+      "variant": "emphasis"
+    },
+    {
+      "id": "cart-to-stock",
+      "from": "cart",
+      "to": "products_stock",
+      "label": "reserva 15 min",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "cat-to-prod",
+      "from": "categories",
+      "to": "products_stock"
+    },
+    {
+      "id": "prod-to-db",
+      "from": "products_stock",
+      "to": "supa_db"
+    },
+    {
+      "id": "pos-to-stock",
+      "from": "pos_terminal",
+      "to": "products_stock",
+      "label": "descuenta stock",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "id": "work-to-stock",
+      "from": "work_orders",
+      "to": "products_stock",
+      "fromSide": "left",
+      "toSide": "right",
+      "variant": "dashed"
+    },
+    {
+      "id": "work-to-pos",
+      "from": "work_orders",
+      "to": "pos_terminal",
+      "label": "cobro servicio"
+    },
+    {
+      "id": "pos-to-sales",
+      "from": "pos_terminal",
+      "to": "sales_cash",
+      "fromSide": "right",
+      "toSide": "right"
+    },
+    {
+      "id": "orders-to-db",
+      "from": "online_orders",
+      "to": "supa_db",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "sales-to-db",
+      "from": "sales_cash",
+      "to": "supa_db",
+      "fromSide": "left",
+      "toSide": "right"
+    },
+    {
+      "id": "auth-to-db",
+      "from": "supa_auth",
+      "to": "saas_license"
+    },
+    {
+      "id": "license-to-cron",
+      "from": "saas_license",
+      "to": "cron_cleanup"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Embudo de Compra Online",
+      "items": [
+        "El carrito bloquea inventario por 15 minutos para evitar sobreventas",
+        "Las pasarelas confirman la transacción mediante webhooks firmados",
+        "Los pedidos generan automáticamente la guía de transporte para el cliente"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Tienda Física y Taller",
+      "items": [
+        "El POS descuenta inventario de forma inmediata al cobrar en caja",
+        "El taller registra dispositivos de clientes y solicita repuestos del catálogo",
+        "Las reparaciones terminadas pasan al POS para facturación y cobro final"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Catálogo e Inventario Central",
+      "items": [
+        "Un solo pool de inventario sincroniza las ventas web y presenciales",
+        "Prevención de condiciones de carrera entre carritos web y el cajero físico"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Gobernanza de Plataforma",
+      "items": [
+        "Supabase Auth gestiona permisos por rol para administradores, cajeros y técnicos",
+        "Procesos en segundo plano liberan reservas de carritos abandonados",
+        "El servicio de licencias valida la vigencia de cada tienda Marca Blanca"
+      ]
+    }
+  ]
+}

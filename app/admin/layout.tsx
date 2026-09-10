@@ -2,6 +2,7 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { LicenseProvider } from "@/shared/components/LicenseProvider";
 import { LicenseOverlay } from "@/shared/components/license/LicenseOverlay";
 import { MENSAJE_BLOQUEADO } from "@/lib/constants/admin";
 import { AdminSidebar } from "@/features/admin/components/admin-sidebar";
@@ -74,8 +75,10 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <Suspense fallback={<AdminSkeleton />}>
-      <AdminContent>{children}</AdminContent>
-    </Suspense>
+    <LicenseProvider>
+      <Suspense fallback={<AdminSkeleton />}>
+        <AdminContent>{children}</AdminContent>
+      </Suspense>
+    </LicenseProvider>
   );
 }

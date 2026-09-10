@@ -1,17 +1,12 @@
-import { createClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
 import { PosSaleFilters } from "@/features/pos/repositories/posRepository"
 import { getSalesAdmin, createSale, CreateSaleBody } from "@/features/pos/services/posSaleService"
 import { validatePosItems } from "@/features/pos/services/posValidateService"
+import { assertAdmin } from "@/shared/utils/authGuards"
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const admin = await assertAdmin()
 
     const { searchParams } = new URL(request.url)
     const filters: PosSaleFilters = {
@@ -22,11 +17,14 @@ export async function GET(request: NextRequest) {
       limit: parseInt(searchParams.get("limit") || "50"),
     }
 
-    const sales = await getSalesAdmin(user.id, filters)
+    const sales = await getSalesAdmin(admin.id, filters)
     return NextResponse.json({ sales })
   } catch (error) {
     console.error("POS sales error:", error)
     const message = (error as Error).message
+    if (message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     if (message === "Forbidden") {
       return NextResponse.json({ error: message }, { status: 403 })
     }
@@ -36,12 +34,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const admin = await assertAdmin()
 
     const body: CreateSaleBody = await request.json()
 
@@ -60,12 +53,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await createSale(user.id, body)
+    const result = await createSale(admin.id, body)
     return NextResponse.json({ sale: result.sale })
   } catch (error) {
     console.error("POS create sale error:", error)
     const message = (error as Error).message
-    if (message === "Stock insuficiente") {
+    if (message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    if (message === "Forbidden") {
+      return NextResponse.json({ error: message }, { status: 403 })
+    }
+    if (message === "Stock insuficiente" || message.includes("Discrepancia")) {
       return NextResponse.json({ error: message }, { status: 400 })
     }
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

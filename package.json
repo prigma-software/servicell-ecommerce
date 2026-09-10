@@ -1,7 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "generate:theme": "npx tsx scripts/generate-theme.mjs",
+    "generate:theme": "node --experimental-strip-types scripts/generate-theme.mjs",
     "prebuild": "npm run generate:theme",
     "dev": "next dev --turbo",
     "build": "next build",

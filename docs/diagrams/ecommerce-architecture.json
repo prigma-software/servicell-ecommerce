@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "E-commerce White Label Platform",
+    "output": "ecommerce-architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "customer-flow",
+        "label": "Storefront Shopping Flow",
+        "focus": ["customers", "cf_edge", "next_app", "supa_db", "payments"],
+        "note": "Customer browsing storefront, managing cart, and completing checkout."
+      },
+      {
+        "id": "admin-pos-flow",
+        "label": "Backoffice & POS Flow",
+        "focus": ["admins", "cf_edge", "middleware", "pos_orders", "supa_auth", "supa_db"],
+        "note": "Store staff and administrators managing inventory, orders, and POS."
+      },
+      {
+        "id": "data-security",
+        "label": "Auth & Data Security",
+        "focus": ["middleware", "supa_auth", "supa_db", "supa_storage"],
+        "note": "Authentication via Supabase Auth and Row Level Security on Postgres."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "customers",
+      "type": "external",
+      "label": "Shoppers",
+      "sublabel": "Web & Mobile",
+      "pos": [40, 190],
+      "size": [130, 60]
+    },
+    {
+      "id": "admins",
+      "type": "external",
+      "label": "Store Staff",
+      "sublabel": "POS & Admin",
+      "pos": [40, 310],
+      "size": [130, 60]
+    },
+    {
+      "id": "payments",
+      "type": "external",
+      "label": "Payment Gateway",
+      "sublabel": "Stripe / Wompi",
+      "pos": [40, 440],
+      "size": [130, 60],
+      "tag": "Webhook Provider"
+    },
+    {
+      "id": "cf_edge",
+      "type": "cloud",
+      "label": "Cloudflare Edge",
+      "sublabel": "CDN & Workers",
+      "brand": "cloudflare",
+      "pos": [260, 250],
+      "size": [140, 64],
+      "tag": "OpenNext :443"
+    },
+    {
+      "id": "middleware",
+      "type": "security",
+      "label": "Edge Middleware",
+      "sublabel": "Auth & Guards",
+      "pos": [490, 120],
+      "size": [140, 60],
+      "tag": "RLS Token Check"
+    },
+    {
+      "id": "next_app",
+      "type": "frontend",
+      "label": "Next.js App",
+      "sublabel": "App Router / RSC",
+      "brand": "next-js",
+      "pos": [490, 250],
+      "size": [140, 64]
+    },
+    {
+      "id": "pos_orders",
+      "type": "backend",
+      "label": "Orders & POS",
+      "sublabel": "Server Actions",
+      "pos": [490, 380],
+      "size": [140, 60]
+    },
+    {
+      "id": "supa_auth",
+      "type": "security",
+      "label": "Supabase Auth",
+      "sublabel": "JWT & Sessions",
+      "brand": "supabase",
+      "pos": [720, 120],
+      "size": [140, 60]
+    },
+    {
+      "id": "supa_db",
+      "type": "database",
+      "label": "PostgreSQL DB",
+      "sublabel": "Tables & RLS",
+      "brand": "supabase",
+      "pos": [720, 250],
+      "size": [140, 64],
+      "tag": "Supabase BaaS"
+    },
+    {
+      "id": "supa_storage",
+      "type": "cloud",
+      "label": "Supabase Storage",
+      "sublabel": "Product Media",
+      "brand": "supabase",
+      "pos": [720, 380],
+      "size": [140, 60]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Next.js Application Core",
+      "wraps": ["middleware", "next_app", "pos_orders"]
+    },
+    {
+      "kind": "region",
+      "label": "Supabase Managed BaaS",
+      "wraps": ["supa_auth", "supa_db", "supa_storage"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "customers-to-edge",
+      "from": "customers",
+      "to": "cf_edge",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "admins-to-edge",
+      "from": "admins",
+      "to": "cf_edge"
+    },
+    {
+      "id": "payments-to-edge",
+      "from": "payments",
+      "to": "cf_edge",
+      "label": "webhook event",
+      "variant": "dashed"
+    },
+    {
+      "id": "edge-to-middleware",
+      "from": "cf_edge",
+      "to": "middleware",
+      "label": "route filter"
+    },
+    {
+      "id": "edge-to-app",
+      "from": "cf_edge",
+      "to": "next_app"
+    },
+    {
+      "id": "middleware-to-auth",
+      "from": "middleware",
+      "to": "supa_auth",
+      "label": "verify session",
+      "variant": "security"
+    },
+    {
+      "id": "app-to-db",
+      "from": "next_app",
+      "to": "supa_db",
+      "label": "SQL queries"
+    },
+    {
+      "id": "pos-to-db",
+      "from": "pos_orders",
+      "to": "supa_db",
+      "label": "mutations"
+    },
+    {
+      "id": "pos-to-storage",
+      "from": "pos_orders",
+      "to": "supa_storage",
+      "variant": "dashed"
+    },
+    {
+      "id": "app-to-pos",
+      "from": "next_app",
+      "to": "pos_orders"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Edge & Routing",
+      "items": [
+        "Cloudflare Workers & OpenNext distribute requests globally",
+        "Edge middleware validates auth tokens before hitting app routes",
+        "Payment webhooks enter through Edge endpoint"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Application Core",
+      "items": [
+        "Next.js 15 App Router handles Server Components and SSR",
+        "Server Actions manage atomic POS transactions and cart checkout",
+        "Single codebase Marca Blanca powers client stores"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Supabase BaaS",
+      "items": [
+        "Supabase Auth provides secure JWT authentication",
+        "PostgreSQL enforces database-level Row Level Security",
+        "Supabase Storage hosts product images and assets"
+      ]
+    }
+  ]
+}

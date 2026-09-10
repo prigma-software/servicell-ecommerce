@@ -67,16 +67,25 @@ function UserActions({ role }: { role: string }) {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.8 }}
     >
+      {isAdmin && (
+        <motion.div {...scaleHover}>
+          <div className="hidden md:flex">
+            <Button asChild variant="default" size="sm">
+              <Link href="/admin">
+                <Shield className="w-4 h-4" weight="fill" />
+                Admin
+              </Link>
+            </Button>
+          </div>
+        </motion.div>
+      )}
+
       <motion.div {...scaleHover}>
         <div className="hidden md:flex">
           <Button asChild variant="ghost" size="sm">
-            <Link href={isAdmin ? "/admin" : "/profile/orders"}>
-              {isAdmin ? (
-                <Shield className="w-4 h-4" weight="fill" />
-              ) : (
-                <Layout className="w-4 h-4" weight="duotone" />
-              )}
-              {isAdmin ? "Admin" : "Mi Cuenta"}
+            <Link href="/profile">
+              <Layout className="w-4 h-4" weight="duotone" />
+              Mi Cuenta
             </Link>
           </Button>
         </div>
@@ -246,11 +255,11 @@ export default function Navbar() {
                   </motion.div>
                 )}
 
-                {user && role !== "administrador" && (
+                {user && (
                   <motion.div whileTap={{ scale: 0.95 }} className="mt-2">
                     <Button asChild variant="ghost" className="w-full">
                       <Link
-                        href="/profile/orders"
+                        href="/profile"
                         className="flex items-center justify-center gap-2"
                       >
                         <Layout className="w-5 h-5" weight="duotone" />

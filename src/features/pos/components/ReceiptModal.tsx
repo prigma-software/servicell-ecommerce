@@ -54,32 +54,44 @@ export default function ReceiptModal({ isOpen, onClose, sale, onNewSale }: Recei
   }
 
   const handlePrint = () => {
-    if (receiptRef.current) {
-      const printWindow = window.open("", "", "width=300,height=600")
-      if (printWindow) {
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>Recibo</title>
-              <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { font-family: monospace; font-size: 12px; padding: 10px; width: 80mm; }
-                .center { text-align: center; }
-                .bold { font-weight: bold; }
-                .right { text-align: right; }
-                .line { border-top: 1px dashed #000; margin: 5px 0; }
-                .row { display: flex; justify-content: space-between; margin: 2px 0; }
-              </style>
-            </head>
-            <body>
-              ${receiptRef.current.innerHTML}
-            </body>
-          </html>
-        `)
-        printWindow.document.close()
-        printWindow.print()
-      }
+    if (!receiptRef.current) return
+
+    const iframe = document.createElement("iframe")
+    iframe.style.position = "fixed"
+    iframe.style.right = "0"
+    iframe.style.bottom = "0"
+    iframe.style.width = "0"
+    iframe.style.height = "0"
+    iframe.style.border = "0"
+    document.body.appendChild(iframe)
+
+    const doc = iframe.contentWindow?.document
+    if (!doc) {
+      document.body.removeChild(iframe)
+      return
     }
+
+    const style = doc.createElement("style")
+    style.textContent = `
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: monospace; font-size: 12px; padding: 10px; width: 80mm; }
+      .center { text-align: center; }
+      .bold { font-weight: bold; }
+      .right { text-align: right; }
+      .line { border-top: 1px dashed #000; margin: 5px 0; }
+      .row { display: flex; justify-content: space-between; margin: 2px 0; }
+    `
+    doc.head.appendChild(style)
+    doc.body.appendChild(receiptRef.current.cloneNode(true))
+
+    iframe.contentWindow?.focus()
+    iframe.contentWindow?.print()
+
+    setTimeout(() => {
+      if (document.body.contains(iframe)) {
+        document.body.removeChild(iframe)
+      }
+    }, 1000)
   }
 
   const handleShare = async () => {

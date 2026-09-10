@@ -64,3 +64,6 @@ supabase/.temp/
 
 .idea/
 *.iml
+
+# strix security runs
+strix_runs/

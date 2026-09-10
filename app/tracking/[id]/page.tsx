@@ -14,9 +14,18 @@ import { X } from "lucide-react";
 const METADATA_TRANSLATIONS: Record<string, string> = {
   device_model: "Modelo del Dispositivo",
   issue_description: "Descripción del Problema",
-  password: "Contraseña",
   email: "Correo Electrónico"
 };
+
+const SENSITIVE_METADATA_KEYS = new Set([
+  "password",
+  "contraseña",
+  "pin",
+  "clave",
+  "pass",
+  "secret",
+  "token",
+]);
 
 const STATUS_TRANSLATIONS: Record<string, string> = {
   DRAFT: "Borrador",
@@ -119,14 +128,16 @@ export default async function TrackingDetailPage({
                 <div className="col-span-2 mt-4 space-y-4">
                   <span className="block text-sm text-muted-foreground font-semibold">Detalles de la Orden</span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {Object.entries(workOrder.custom_metadata).map(([key, value]) => (
-                      <div key={key} className="bg-muted/30 p-3 rounded-md border">
-                        <span className="block text-xs text-muted-foreground capitalize mb-1">
-                          {METADATA_TRANSLATIONS[key] || key.replace(/_/g, " ")}
-                        </span>
-                        <span className="font-medium text-sm break-words">{String(value)}</span>
-                      </div>
-                    ))}
+                    {Object.entries(workOrder.custom_metadata)
+                      .filter(([key]) => !SENSITIVE_METADATA_KEYS.has(key.toLowerCase().trim()))
+                      .map(([key, value]) => (
+                        <div key={key} className="bg-muted/30 p-3 rounded-md border">
+                          <span className="block text-xs text-muted-foreground capitalize mb-1">
+                            {METADATA_TRANSLATIONS[key] || key.replace(/_/g, " ")}
+                          </span>
+                          <span className="font-medium text-sm break-words">{String(value)}</span>
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}

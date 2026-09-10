@@ -45,8 +45,13 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getUser();
   const user = data?.user;
 
-  const isAdminPath = request.nextUrl.pathname.startsWith("/admin");
-  const isAdminApiPath = request.nextUrl.pathname.startsWith("/api/admin");
+  const pathname = request.nextUrl.pathname;
+  const isAdminPath = pathname.startsWith("/admin");
+  const isAdminApiPath =
+    pathname.startsWith("/api/admin") ||
+    pathname.startsWith("/api/pos") ||
+    pathname === "/api/orders/export" ||
+    pathname.startsWith("/api/users");
 
   // Protect admin routes and admin API endpoints
   if (isAdminPath || isAdminApiPath) {
@@ -73,12 +78,12 @@ export async function updateSession(request: NextRequest) {
   }
 
   // General auth protection for user profile
-  if (request.nextUrl.pathname.startsWith("/profile") && !user) {
+  if (pathname.startsWith("/profile") && !user) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Set strict cache-control on private / admin routes to prevent caching of sensitive data
-  if (isAdminPath || isAdminApiPath || request.nextUrl.pathname.startsWith("/profile")) {
+  if (isAdminPath || isAdminApiPath || pathname.startsWith("/profile")) {
     supabaseResponse.headers.set(
       "Cache-Control",
       "private, no-cache, no-store, max-age=0, must-revalidate"

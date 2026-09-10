@@ -50,8 +50,6 @@ export async function createSale(
     items,
     discount_amount,
     discount_reason,
-    subtotal,
-    total,
     payment_method,
     amount_received,
     change_amount,
@@ -61,14 +59,64 @@ export async function createSale(
     work_order_id,
   } = body
 
+  // Recalcular precios reales desde catálogo en base de datos para impedir manipulación de precios
+  const variantIds = items.filter((i) => i.variant_id).map((i) => i.variant_id!)
+  const productIds = items.map((i) => i.product_id)
+
+  const [skusRes, productsRes] = await Promise.all([
+    variantIds.length > 0
+      ? client.from("product_skus").select("id, product_id, price_override").in("id", variantIds)
+      : { data: [], error: null },
+    client.from("products").select("id, price").in("id", productIds),
+  ])
+
+  const skuMap = new Map((skusRes.data || []).map((s: any) => [s.id, s]))
+  const productMap = new Map((productsRes.data || []).map((p: any) => [p.id, p]))
+
+  let verifiedSubtotal = 0
+  const verifiedItems: SaleItem[] = items.map((item) => {
+    let officialUnitPrice: number
+    if (item.variant_id) {
+      const sku = skuMap.get(item.variant_id)
+      const parent = sku ? productMap.get(sku.product_id) : undefined
+      officialUnitPrice = sku?.price_override ?? parent?.price ?? 0
+    } else {
+      officialUnitPrice = productMap.get(item.product_id)?.price ?? 0
+    }
+
+    const discountPct = Math.max(0, Math.min(100, item.discount_pct || 0))
+    const lineDiscount = Math.round(officialUnitPrice * (discountPct / 100))
+    const effectiveUnitPrice = officialUnitPrice - lineDiscount
+    const lineSubtotal = effectiveUnitPrice * item.quantity
+    verifiedSubtotal += lineSubtotal
+
+    return {
+      ...item,
+      unit_price: officialUnitPrice,
+      discount_pct: discountPct,
+      subtotal: lineSubtotal,
+    }
+  })
+
+  const verifiedDiscountAmount = Math.max(0, discount_amount || 0)
+  const verifiedTotal = Math.max(0, verifiedSubtotal - verifiedDiscountAmount)
+
+  // Si hay pagos divididos, validar que la suma coincida con el total calculado
+  if (payments && payments.length > 1) {
+    const totalPayments = payments.reduce((sum, p) => sum + p.amount, 0)
+    if (Math.abs(totalPayments - verifiedTotal) > 1) {
+      throw new Error(`Discrepancia en pagos: La suma de pagos (${totalPayments}) no coincide con el total calculado (${verifiedTotal})`)
+    }
+  }
+
   const sale = await insertPosSale(client, {
     seller_id: sellerId,
     customer_name: customer_name || null,
-    items: JSON.stringify(items),
-    subtotal,
-    discount_amount: discount_amount || 0,
+    items: JSON.stringify(verifiedItems),
+    subtotal: verifiedSubtotal,
+    discount_amount: verifiedDiscountAmount,
     discount_reason: discount_reason || null,
-    total,
+    total: verifiedTotal,
     payment_method,
     payment_status: "paid",
     amount_received: amount_received || null,
@@ -83,7 +131,7 @@ export async function createSale(
   }
 
   try {
-    await decrementPosStock(client, items)
+    await decrementPosStock(client, verifiedItems)
   } catch (err) {
     console.error("Stock decrement failed, rolling back sale", err)
     await deletePosSaleById(client, sale.id)

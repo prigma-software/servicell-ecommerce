@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import {
   findOrders,
   findOrderById,
@@ -86,7 +87,7 @@ export async function rollbackOrderStock(
   orderId: string,
   preloadedItems?: { product_id: string; variant_id: string | null; quantity: number }[]
 ): Promise<{ success: boolean; error?: string }> {
-  const client = await createClient()
+  const client = await createAdminClient()
 
   // Guardián atómico de duplicación
   const { data, error } = await client

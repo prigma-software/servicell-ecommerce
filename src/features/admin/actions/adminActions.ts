@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { assertAdmin } from "@/shared/utils/authGuards"
 
 // ============================================
 // TYPES
@@ -88,6 +89,7 @@ export async function calculatePeriodDates(
  * Count active (non-archived) products in a category
  */
 export async function hasProducts(categoryId: string): Promise<number> {
+  await assertAdmin()
   const supabase = await createClient()
   const { count, error } = await supabase
     .from("products")
@@ -104,6 +106,7 @@ export async function hasProducts(categoryId: string): Promise<number> {
 // ============================================
 
 export async function createCategory(formData: FormData) {
+  await assertAdmin()
   const name = formData.get("name") as string
   const description = formData.get("description") as string
 
@@ -119,6 +122,7 @@ export async function createCategory(formData: FormData) {
 // ============================================
 
 export async function updateCategory(formData: FormData) {
+  await assertAdmin()
   const id = formData.get("id") as string
   const name = formData.get("name") as string
   const description = formData.get("description") as string
@@ -135,10 +139,11 @@ export async function updateCategory(formData: FormData) {
 // ============================================
 
 /**
- * Delete category ÔÇö only allowed if no active products exist.
+ * Delete category — only allowed if no active products exist.
  * Returns { success: true } or { error: string } if blocked.
  */
 export async function deleteCategory(id: string): Promise<{ success: boolean; error?: string }> {
+  await assertAdmin()
   const supabase = await createClient()
 
   // Check for active products in this category
@@ -182,6 +187,7 @@ export interface DashboardMetrics {
  * Reduces network calls from 6 to 1.
  */
 export async function getDashboardMetrics(start: Date, end: Date): Promise<DashboardMetrics> {
+  await assertAdmin()
   const supabase = await createClient()
 
   const [
@@ -309,6 +315,7 @@ export async function getRevenueByDay(
   start: Date,
   end: Date
 ): Promise<RevenueByDayResult> {
+  await assertAdmin()
   const supabase = await createClient()
 
   const [ordersResult, posResult] = await Promise.all([
@@ -393,6 +400,7 @@ export async function getOrdersByStatus(
   start: Date,
   end: Date
 ): Promise<OrderStatusCount[]> {
+  await assertAdmin()
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -422,6 +430,7 @@ export async function getPOSSalesByStatus(
   start: Date,
   end: Date
 ): Promise<OrderStatusCount[]> {
+  await assertAdmin()
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -447,6 +456,7 @@ export async function getPOSSalesByStatus(
 // ============================================
 
 export async function getShippingZones() {
+  await assertAdmin()
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("shipping_zones")
@@ -458,6 +468,7 @@ export async function getShippingZones() {
 }
 
 export async function createShippingZone(formData: FormData) {
+  await assertAdmin()
   const name = (formData.get("name") as string)?.trim()
   const costStr = formData.get("cost") as string
   const freeThresholdStr = formData.get("free_threshold") as string
@@ -488,6 +499,7 @@ export async function createShippingZone(formData: FormData) {
 }
 
 export async function updateShippingZone(formData: FormData) {
+  await assertAdmin()
   const id = formData.get("id") as string
   const name = (formData.get("name") as string)?.trim()
   const costStr = formData.get("cost") as string
@@ -520,6 +532,7 @@ export async function updateShippingZone(formData: FormData) {
 }
 
 export async function deleteShippingZone(id: string) {
+  await assertAdmin()
   const supabase = await createClient()
   const { error } = await supabase.from("shipping_zones").delete().eq("id", id)
 

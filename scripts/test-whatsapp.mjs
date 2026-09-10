@@ -29,11 +29,25 @@ function loadEnv(filePath) {
 loadEnv(envLocalPath);
 loadEnv(envPath);
 
-const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+const args = process.argv.slice(2);
+const envFlag = args.find((a) => a.startsWith("--env="));
+const forcedEnv = envFlag ? envFlag.split("=")[1].toLowerCase() : null;
+const targetPhoneArg = args.find((a) => !a.startsWith("--"));
+
+const activeEnv = (forcedEnv || process.env.WHATSAPP_ENV || "test").toLowerCase();
+let phoneNumberId;
+if (activeEnv === "production" || activeEnv === "prod") {
+  phoneNumberId =
+    process.env.WHATSAPP_PHONE_NUMBER_ID_PROD ||
+    process.env.WHATSAPP_PHONE_NUMBER_ID;
+} else {
+  phoneNumberId =
+    process.env.WHATSAPP_PHONE_NUMBER_ID_TEST ||
+    process.env.WHATSAPP_PHONE_NUMBER_ID;
+}
+
 const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
 const apiVersion = process.env.WHATSAPP_API_VERSION || "v22.0";
-
-const targetPhoneArg = process.argv[2];
 
 console.log("=========================================");
 console.log("🚀 WhatsApp Cloud API Test Runner");
@@ -41,16 +55,17 @@ console.log("=========================================");
 
 if (!phoneNumberId || !accessToken) {
   console.error("❌ ERROR: Faltan credenciales de WhatsApp en .env o .env.local:");
-  console.error(`- WHATSAPP_PHONE_NUMBER_ID: ${phoneNumberId ? "OK" : "FALTA"}`);
+  console.error(`- Phone Number ID (${activeEnv}): ${phoneNumberId ? "OK" : "FALTA"}`);
   console.error(`- WHATSAPP_ACCESS_TOKEN: ${accessToken ? "OK" : "FALTA"}`);
-  console.log("\nPor favor agrega estas variables a tu .env.local y vuelve a ejecutar.");
+  console.log("\nPor favor verifica tus variables en .env y vuelve a ejecutar.");
   process.exit(1);
 }
 
 if (!targetPhoneArg) {
   console.error("❌ ERROR: Debes especificar el número de destino.");
-  console.log("Uso: node scripts/test-whatsapp.mjs <NUMERO_TELEFONO>");
-  console.log("Ejemplo: node scripts/test-whatsapp.mjs 3001234567");
+  console.log("Uso: node scripts/test-whatsapp.mjs <NUMERO_TELEFONO> [--env=test|prod]");
+  console.log("Ejemplo Test: node scripts/test-whatsapp.mjs 3178079672 --env=test");
+  console.log("Ejemplo Prod: node scripts/test-whatsapp.mjs 3178079672 --env=prod");
   process.exit(1);
 }
 
@@ -60,6 +75,7 @@ if (formattedPhone.length === 10 && formattedPhone.startsWith("3")) {
   formattedPhone = "57" + formattedPhone;
 }
 
+console.log(`🌍 Ambiente:        ${activeEnv} (${activeEnv === "production" || activeEnv === "prod" ? "Producción" : "Sandbox Test"})`);
 console.log(`📱 Phone Number ID: ${phoneNumberId}`);
 console.log(`🌐 API Version:     ${apiVersion}`);
 console.log(`🎯 Destinatario:    ${formattedPhone}`);

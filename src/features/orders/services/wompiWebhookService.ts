@@ -153,7 +153,7 @@ export async function processWompiWebhook(
   if (newStatus === "APPROVED") {
     // Protección contra manipulación de monto
     if (transaction.amount_in_cents !== undefined && orderData.total_amount !== undefined) {
-      const expectedAmountInCents = Math.round(orderData.total_amount) * 100
+      const expectedAmountInCents = Math.round(Number(orderData.total_amount) * 100)
       if (transaction.amount_in_cents < expectedAmountInCents) {
         console.error(`[Wompi Webhook] Monto pagado (${transaction.amount_in_cents}) es menor al monto de la orden (${expectedAmountInCents})`)
         return { received: false, error: "Monto insuficiente" }

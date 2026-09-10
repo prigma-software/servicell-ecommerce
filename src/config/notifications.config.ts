@@ -8,6 +8,27 @@ export const notificationsConfig = {
       process.env.NEXT_PUBLIC_ENABLE_WHATSAPP_NOTIFICATIONS === "true",
   },
   whatsapp: {
+    environment: (process.env.WHATSAPP_ENV || "production").toLowerCase(),
+    phoneNumberId: (() => {
+      const mode = (process.env.WHATSAPP_ENV || "").toLowerCase();
+      if (mode === "test") {
+        return (
+          process.env.WHATSAPP_PHONE_NUMBER_ID_TEST ||
+          process.env.WHATSAPP_PHONE_NUMBER_ID
+        );
+      }
+      if (mode === "production") {
+        return (
+          process.env.WHATSAPP_PHONE_NUMBER_ID_PROD ||
+          process.env.WHATSAPP_PHONE_NUMBER_ID
+        );
+      }
+      return (
+        process.env.WHATSAPP_PHONE_NUMBER_ID ||
+        process.env.WHATSAPP_PHONE_NUMBER_ID_PROD ||
+        process.env.WHATSAPP_PHONE_NUMBER_ID_TEST
+      );
+    })(),
     defaultCountryCode: process.env.WHATSAPP_DEFAULT_COUNTRY_CODE || "57",
     defaultLanguageCode: process.env.WHATSAPP_TEMPLATE_LANGUAGE || "es",
     useTemplates: process.env.WHATSAPP_USE_TEMPLATES === "true",

@@ -7,6 +7,9 @@ describe("WhatsAppService", () => {
   beforeEach(() => {
     vi.resetModules();
     process.env = { ...originalEnv };
+    delete process.env.WHATSAPP_PHONE_NUMBER_ID_TEST;
+    delete process.env.WHATSAPP_PHONE_NUMBER_ID_PROD;
+    delete process.env.WHATSAPP_ENV;
   });
 
   afterEach(() => {
@@ -168,5 +171,31 @@ describe("WhatsAppService", () => {
     await service.sendText("invalid-phone", "test");
 
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("should select WHATSAPP_PHONE_NUMBER_ID_TEST when WHATSAPP_ENV is test", () => {
+    process.env.WHATSAPP_ENV = "test";
+    process.env.WHATSAPP_PHONE_NUMBER_ID_TEST = "test_phone_123";
+    process.env.WHATSAPP_PHONE_NUMBER_ID_PROD = "prod_phone_456";
+
+    const service = new WhatsAppService();
+    expect(service.getPhoneNumberId()).toBe("test_phone_123");
+  });
+
+  it("should select WHATSAPP_PHONE_NUMBER_ID_PROD when WHATSAPP_ENV is production", () => {
+    process.env.WHATSAPP_ENV = "production";
+    process.env.WHATSAPP_PHONE_NUMBER_ID_TEST = "test_phone_123";
+    process.env.WHATSAPP_PHONE_NUMBER_ID_PROD = "prod_phone_456";
+
+    const service = new WhatsAppService();
+    expect(service.getPhoneNumberId()).toBe("prod_phone_456");
+  });
+
+  it("should allow explicit constructor override of phoneNumberId", () => {
+    process.env.WHATSAPP_ENV = "production";
+    process.env.WHATSAPP_PHONE_NUMBER_ID_PROD = "prod_phone_456";
+
+    const service = new WhatsAppService("custom_override_789");
+    expect(service.getPhoneNumberId()).toBe("custom_override_789");
   });
 });

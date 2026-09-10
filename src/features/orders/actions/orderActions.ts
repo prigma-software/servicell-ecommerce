@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { assertAdmin } from "@/shared/utils/authGuards"
 import {
   getOrders,
   getOrderById,
@@ -24,9 +25,8 @@ export async function markOrderAsPaid(
     payments?: { method: string; amount: number }[]
   }
 ): Promise<{ success: boolean; error?: string }> {
-  const client = await createClient()
-  const { data: { user } } = await client.auth.getUser()
-  const adminUser = user ? { id: user.id, email: user.email || "" } : undefined
+  const admin = await assertAdmin()
+  const adminUser = { id: admin.id, email: admin.email || "" }
 
   const result = await svcMarkOrderAsPaid(orderId, adminUser, paymentDetails)
   if (result.success) {
@@ -59,6 +59,7 @@ export async function updateOrderStatus(
   orderId: string,
   newStatus: OrderStatus
 ): Promise<{ success: boolean; error?: string }> {
+  await assertAdmin()
   const result = await svcUpdateOrderStatus(orderId, newStatus)
   if (result.success) {
     revalidatePath("/admin/orders")
@@ -73,10 +74,8 @@ export async function cancelOrder(
   orderId: string,
   reason: string
 ): Promise<{ success: boolean; error?: string }> {
-  const client = await createClient()
-  const { data: { user } } = await client.auth.getUser()
-
-  const adminUser = user ? { id: user.id, email: user.email || "" } : undefined
+  const admin = await assertAdmin()
+  const adminUser = { id: admin.id, email: admin.email || "" }
   const result = await svcCancelOrder(orderId, reason, adminUser)
 
   if (result.success) {
@@ -91,19 +90,18 @@ export async function cancelOrder(
 export async function approveManualOrder(
   orderId: string
 ): Promise<{ success: boolean; error?: string }> {
+  const admin = await assertAdmin()
   const client = await createClient()
   const order = await getOrderById(orderId)
   if (!order || order.status !== "PENDING_MANUAL") {
     return { success: false, error: "Solo las órdenes en estado PENDING_MANUAL pueden ser aprobadas manualmente." }
   }
 
-  const { data: { user } } = await client.auth.getUser()
-
   const result = await svcUpdateOrderStatus(orderId, "APPROVED")
   if (result.success) {
     await createAuditLog(client, {
-      user_id: user?.id || null,
-      user_email: user?.email || null,
+      user_id: admin.id,
+      user_email: admin.email || null,
       action: "ORDER_APPROVED",
       target_type: "order",
       target_id: orderId,
@@ -141,12 +139,14 @@ export async function approveManualOrder(
 export async function cancelManualOrder(
   orderId: string
 ): Promise<{ success: boolean; error?: string }> {
+  await assertAdmin()
   return cancelOrder(orderId, "Cancelación manual desde panel administrativo")
 }
 
 export async function rollbackOrderStock(
   orderId: string
 ): Promise<{ success: boolean; error?: string }> {
+  await assertAdmin()
   const result = await svcRollbackOrderStock(orderId)
   if (result.success) {
     revalidatePath("/admin/orders")
@@ -158,6 +158,7 @@ export async function rollbackOrderStock(
 export async function markOrderAsError(
   orderId: string
 ): Promise<{ success: boolean; error?: string }> {
+  await assertAdmin()
   const result = await svcMarkOrderAsError(orderId)
   if (result.success) {
     revalidatePath("/admin/orders")
@@ -169,6 +170,7 @@ export async function markOrderAsError(
 }
 
 export async function getOrderAuditLogs(orderId: string): Promise<AuditLog[]> {
+  await assertAdmin()
   const client = await createClient()
   return findAuditLogsByTarget(client, "order", orderId)
 }
