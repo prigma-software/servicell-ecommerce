@@ -80,7 +80,7 @@ export const storeBranding = {
     workOrders: true,
     payments: {
       wompi: true,
-      manual: true,
+      manual: false,
     }
   },
 } as const;
