@@ -331,7 +331,8 @@ AS $$
     created_at,
     updated_at,
     (custom_metadata - 'password' - 'contraseña' - 'pin' - 'clave') AS custom_metadata,
-    customer_email
+    customer_email,
+    resolution_note
   FROM public.work_orders 
   WHERE tracking_id = p_tracking_id 
     AND customer_phone = p_phone;
