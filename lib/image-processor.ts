@@ -12,12 +12,13 @@ export interface OptimizedImage {
   height: number
 }
 
-let sharpModule: { default: typeof import('sharp') } | null | undefined = undefined
+let sharpModule: { default: any } | null | undefined = undefined
 
 async function getSharp() {
   if (sharpModule === undefined) {
     try {
-      sharpModule = await import('sharp')
+      const moduleName = 'sharp'
+      sharpModule = await import(/* webpackIgnore: true */ moduleName)
     } catch {
       sharpModule = null
     }
